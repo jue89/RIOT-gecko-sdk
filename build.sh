@@ -2,7 +2,7 @@
 
 GECKO_SDK_USER="SiliconLabs"
 GECKO_SDK_REPO="gecko_sdk"
-GECKO_SDK_SHA1="1b1146884839bbfddaae34da39de8d780ed905b9" # Version 4.1.2
+GECKO_SDK_SHA1="911f6cdefccbae03bc66e8c790ceb7e67ca07417" # Version 4.4.1
 GECKO_SDK_URL="https://github.com/${GECKO_SDK_USER}/${GECKO_SDK_REPO}/archive/${GECKO_SDK_SHA1}.zip"
 
 DIST_DIR=$(pwd)/dist
@@ -16,9 +16,11 @@ mkdir -p "${DIST_DIR}"
 mkdir -p "${TEMP_DIR}"
 
 # Download and extract Gecko SDK.
-wget -O "${TEMP_DIR}/gecko_sdk.zip" "${GECKO_SDK_URL}"
-unzip -o "${TEMP_DIR}/gecko_sdk.zip" -d "${TEMP_DIR}"
-mv "${TEMP_DIR}/${GECKO_SDK_REPO}-${GECKO_SDK_SHA1}" "${TEMP_DIR}/gecko_sdk"
+#wget -O "${TEMP_DIR}/gecko_sdk.zip" "${GECKO_SDK_URL}"
+#unzip -o "${TEMP_DIR}/gecko_sdk.zip" -d "${TEMP_DIR}"
+#mv "${TEMP_DIR}/${GECKO_SDK_REPO}-${GECKO_SDK_SHA1}" "${TEMP_DIR}/gecko_sdk"
+mkdir "${TEMP_DIR}/gecko_sdk"
+cp -r ../gecko_sdk/* "${TEMP_DIR}/gecko_sdk"
 
 # Prepare distribution.
 cp "${TEMP_DIR}/gecko_sdk/License.txt" "${DIST_DIR}"
@@ -27,11 +29,12 @@ rsync -avp "${TEMP_DIR}/gecko_sdk/platform/emlib" "${DIST_DIR}"
 rsync -avp "${TEMP_DIR}/gecko_sdk/platform/radio" "${DIST_DIR}"
 
 # Remove unneeded files.
-rm "${DIST_DIR}/emlib/emlib_core_validation.lua"
 rm -rf "${DIST_DIR}/common/component"
 rm -rf "${DIST_DIR}/common/component_catalog"
 rm -rf "${DIST_DIR}/common/config"
 rm -rf "${DIST_DIR}/common/errno"
+rm -rf "${DIST_DIR}/common/example*"
+rm -rf "${DIST_DIR}/common/postbuild_profile"
 rm -rf "${DIST_DIR}/common/script"
 rm -rf "${DIST_DIR}/common/src"
 rm -rf "${DIST_DIR}/common/toolchain"

@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
+
+set -e
 
 GECKO_SDK_USER="SiliconLabs"
 GECKO_SDK_REPO="gecko_sdk"

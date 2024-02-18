@@ -48,8 +48,8 @@
 #error "The task register API currently only supports a maximum of 255 registers"
 #endif
 // Check if the user has overwritten the configNUM_THREAD_LOCAL_STORAGE_POINTERS config
-#if configNUM_THREAD_LOCAL_STORAGE_POINTERS < (configNUM_USER_THREAD_LOCAL_STORAGE_POINTERS + \
-                                               configNUM_SDK_THREAD_LOCAL_STORAGE_POINTERS)
+#if configNUM_THREAD_LOCAL_STORAGE_POINTERS < (configNUM_USER_THREAD_LOCAL_STORAGE_POINTERS \
+                                               + configNUM_SDK_THREAD_LOCAL_STORAGE_POINTERS)
 #error "Please use the configUSER_NUM_THREAD_LOCAL_STORAGE_POINTERS to configure the local storage pointers"
 #endif
 #elif defined(SL_CATALOG_MICRIUMOS_KERNEL_PRESENT)
@@ -58,6 +58,10 @@
 
 #include "sl_status.h"
 #include "cmsis_os2.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #if defined(SL_CATALOG_FREERTOS_KERNEL_PRESENT)
 typedef uint8_t sli_task_register_id_t;
@@ -96,5 +100,9 @@ sl_status_t sli_osTaskRegisterGetValue(const osThreadId_t thread_id,
 sl_status_t sli_osTaskRegisterSetValue(const osThreadId_t thread_id,
                                        const sli_task_register_id_t reg_id,
                                        const uint32_t value);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // SLI_CMSIS_OS2_EXT_TASK_REGISTER_H

@@ -55,7 +55,7 @@ extern "C" {
 /// // Main RAIL_EVENT callback
 /// static void RAILCb_Event(RAIL_Handle_t railHandle, RAIL_Events_t events)
 /// {
-///   // Get beamNodeId and channel index from Beam Packet
+///   // Get beamNodeId and channel index from beam packet
 ///   if (events & RAIL_EVENT_ZWAVE_BEAM) {
 ///     if (RAIL_ZWAVE_IsEnabled(railHandle)) {
 ///       if ((RAIL_ZWAVE_GetBeamNodeId(railHandle, &gRecentBeamNodeId)
@@ -105,6 +105,8 @@ RAIL_ENUM_GENERIC(RAIL_ZWAVE_Options_t, uint32_t) {
   RAIL_ZWAVE_OPTION_DETECT_BEAM_FRAMES_SHIFT,
   /** Shift position of \ref RAIL_ZWAVE_OPTION_NODE_ID_FILTERING bit */
   RAIL_ZWAVE_OPTION_NODE_ID_FILTERING_SHIFT,
+  /** Shift position of \ref RAIL_ZWAVE_OPTION_PROMISCUOUS_BEAM_MODE bit */
+  RAIL_ZWAVE_OPTION_PROMISCUOUS_BEAM_MODE_SHIFT,
 };
 
 // RAIL_ZWAVE_Options_t bitmasks
@@ -116,40 +118,59 @@ RAIL_ENUM_GENERIC(RAIL_ZWAVE_Options_t, uint32_t) {
 #define RAIL_ZWAVE_OPTIONS_DEFAULT RAIL_ZWAVE_OPTIONS_NONE
 
 /**
- * An option to configure promiscuous mode, accepting packets regardless
- * of HomeId. Defaults to false, filtering packets based on the HomeId.
+ * An option to configure promiscuous mode, accepting non-beam packets
+ * regardless of their HomeId. By default packets are filtered by their HomeId.
  * When true, such filtering is disabled.
  */
 #define RAIL_ZWAVE_OPTION_PROMISCUOUS_MODE \
   (1u << RAIL_ZWAVE_OPTION_PROMISCUOUS_MODE_SHIFT)
+
 /**
- * An option to configure Beam frame recognition. Defaults to false.
- * When true, Beam frames that are broadcast or match the NodeId and
- * HomeIdHash values will trigger \ref RAIL_EVENT_ZWAVE_BEAM event,
- * in addition to \ref RAIL_EVENT_RX_PACKET_ABORTED which occurs for
- * every received Beam frame.
+ * An option to filter non-beam packets based on their NodeId when
+ * \ref RAIL_ZWAVE_OPTION_PROMISCUOUS_MODE is disabled.
  *
- * @note This option takes precedence over \ref
- *   RAIL_ZWAVE_OPTION_PROMISCUOUS_MODE when receiving a beam frame.
- *   If this option is false, beam frames are not considered special
- *   and will be received as if they were normal Z-Wave frames, assuredly
- *   triggering \ref RAIL_EVENT_RX_FRAME_ERROR.
- */
-#define RAIL_ZWAVE_OPTION_DETECT_BEAM_FRAMES \
-  (1u << RAIL_ZWAVE_OPTION_DETECT_BEAM_FRAMES_SHIFT)
-/**
- * An option to filter packets based on Node ID when not
- * promiscuous.
+ * @note This option has no effect when
+ *   \ref RAIL_ZWAVE_OPTION_PROMISCUOUS_MODE is enabled.
  */
 #define RAIL_ZWAVE_OPTION_NODE_ID_FILTERING \
   (1u << RAIL_ZWAVE_OPTION_NODE_ID_FILTERING_SHIFT)
+
+/**
+ * An option to configure beam frame recognition. By default beams are not
+ * considered special and will be received as if they were normal Z-Wave
+ * frames, assuredly triggering \ref RAIL_EVENT_RX_FRAME_ERROR.
+ * When true, beam frames that are broadcast or match the NodeId and
+ * HomeIdHash values will trigger \ref RAIL_EVENT_ZWAVE_BEAM event.
+ * (All beams additionally trigger \ref RAIL_EVENT_RX_PACKET_ABORTED
+ * regardless of NodeId / HomeIdHash values.)
+ *
+ * @note This option takes precedence over \ref
+ *   RAIL_ZWAVE_OPTION_PROMISCUOUS_MODE when receiving a beam frame.
+ *   For promiscuous beam handling see related
+ *   \ref RAIL_ZWAVE_OPTION_PROMISCUOUS_BEAM_MODE option.
+ */
+#define RAIL_ZWAVE_OPTION_DETECT_BEAM_FRAMES \
+  (1u << RAIL_ZWAVE_OPTION_DETECT_BEAM_FRAMES_SHIFT)
+
+/**
+ * An option to receive all beams promiscuously when \ref
+ * RAIL_ZWAVE_OPTION_DETECT_BEAM_FRAMES is enabled.
+ * When true, beam frames are received regardless of their NodeId or HomeIdHash
+ * resulting in \ref RAIL_EVENT_ZWAVE_BEAM (and also \ref
+ * RAIL_EVENT_RX_PACKET_ABORTED) for each beam frame.
+ *
+ * @note This option has no effect when
+ *   \ref RAIL_ZWAVE_OPTION_DETECT_BEAM_FRAMES is disabled.
+ */
+#define RAIL_ZWAVE_OPTION_PROMISCUOUS_BEAM_MODE \
+  (1u << RAIL_ZWAVE_OPTION_PROMISCUOUS_BEAM_MODE_SHIFT)
 
 /** A value representing all options */
 #define RAIL_ZWAVE_OPTIONS_ALL 0xFFFFFFFFU
 
 /**
  * @enum RAIL_ZWAVE_NodeId_t
- * @brief A Z-Wave Node Id.
+ * @brief A Z-Wave Node ID.
  *
  * This data type is 12 bits wide when using the ZWave Long Range PHY, and
  * 8 bits wide otherwise.
@@ -177,7 +198,7 @@ RAIL_ENUM_GENERIC(RAIL_ZWAVE_NodeId_t, uint16_t) {
 #define RAIL_ZWAVE_NODE_ID_NONE      ((RAIL_ZWAVE_NodeId_t) RAIL_ZWAVE_NODE_ID_NONE)
 #define RAIL_ZWAVE_NODE_ID_BROADCAST ((RAIL_ZWAVE_NodeId_t) RAIL_ZWAVE_NODE_ID_BROADCAST)
 #define RAIL_ZWAVE_NODE_ID_DEFAULT   ((RAIL_ZWAVE_NodeId_t) RAIL_ZWAVE_NODE_ID_DEFAULT)
-#endif//DOXYGEN_SHOULD_SKIP_THIS
+#endif //DOXYGEN_SHOULD_SKIP_THIS
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 /** Defines for subPhyID field in RAIL_RxPacketDetails_t */
@@ -185,7 +206,7 @@ RAIL_ENUM_GENERIC(RAIL_ZWAVE_NodeId_t, uint16_t) {
 #define RAIL_ZWAVE_RX_SUBPHY_ID_1     (1U)
 #define RAIL_ZWAVE_RX_SUBPHY_ID_2     (2U)
 #define RAIL_ZWAVE_RX_SUBPHY_ID_3     (3U)
-#endif//DOXYGEN_SHOULD_SKIP_THIS
+#endif //DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * @enum RAIL_ZWAVE_HomeId_t
@@ -202,11 +223,11 @@ RAIL_ENUM_GENERIC(RAIL_ZWAVE_HomeId_t, uint32_t) {
 // Self-referencing defines minimize compiler complaints when using RAIL_ENUM
 #define RAIL_ZWAVE_HOME_ID_UNKNOWN ((RAIL_ZWAVE_HomeId_t) RAIL_ZWAVE_HOME_ID_UNKNOWN)
 #define RAIL_ZWAVE_HOME_ID_DEFAULT ((RAIL_ZWAVE_HomeId_t) RAIL_ZWAVE_HOME_ID_DEFAULT)
-#endif//DOXYGEN_SHOULD_SKIP_THIS
+#endif //DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * @enum RAIL_ZWAVE_HomeIdHash_t
- * @brief A Z-Wave Home Id hash.
+ * @brief A Z-Wave Home ID hash.
  *
  * @note Certain values (as shown) are illegal.
  */
@@ -216,7 +237,7 @@ RAIL_ENUM(RAIL_ZWAVE_HomeIdHash_t) {
   RAIL_ZWAVE_HOME_ID_HASH_ILLEGAL_3 = 0x55U, /**< An illegal HomeIdHash value. */
   RAIL_ZWAVE_HOME_ID_HASH_DONT_CARE = 0x55U, /**< Illegal HomeIdHash value that
                                                   suppresses checking the
-                                                  HomeIdHash field of Beam
+                                                  HomeIdHash field of beam
                                                   packets. */
   RAIL_ZWAVE_HOME_ID_HASH_DEFAULT
     = RAIL_ZWAVE_HOME_ID_HASH_DONT_CARE, /**< Default to don't care. */
@@ -229,7 +250,7 @@ RAIL_ENUM(RAIL_ZWAVE_HomeIdHash_t) {
 #define RAIL_ZWAVE_HOME_ID_HASH_ILLEGAL_3 ((RAIL_ZWAVE_HomeIdHash_t) RAIL_ZWAVE_HOME_ID_HASH_ILLEGAL_3)
 #define RAIL_ZWAVE_HOME_ID_HASH_DONT_CARE ((RAIL_ZWAVE_HomeIdHash_t) RAIL_ZWAVE_HOME_ID_HASH_DONT_CARE)
 #define RAIL_ZWAVE_HOME_ID_HASH_DEFAULT   ((RAIL_ZWAVE_HomeIdHash_t) RAIL_ZWAVE_HOME_ID_HASH_DEFAULT)
-#endif//DOXYGEN_SHOULD_SKIP_THIS
+#endif //DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * @struct RAIL_ZWAVE_Config_t
@@ -263,6 +284,35 @@ RAIL_ENUM(RAIL_ZWAVE_Baud_t) {
   RAIL_ZWAVE_BAUD_INVALID   /**< Sentinel value for invalid baud rate*/
 };
 
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+/**
+ * @enum RAIL_ZWAVE_RegionOptions_t
+ * @brief Region Specific Physical
+ */
+
+RAIL_ENUM(RAIL_ZWAVE_RegionOptions_t)
+{
+  /** Bit shift for US Long Range End Devices */
+  RAIL_ZWAVE_REGION_LONG_RANGE_END_SHIFT = 0,
+  /** Bit shift for special low side config, mostly for Japan and Korea */
+  RAIL_ZWAVE_REGION_LOW_SIDE_SHIFT = 1,
+  /** Bit shift for US long range range configurations */
+  RAIL_ZWAVE_REGION_LONG_RANGE_SHIFT = 2,
+};
+
+/**
+ * RAIL_ZWAVE_RegionOptions_t bitmasks
+ */
+/** A value representing US Long Range regions  */
+#define RAIL_ZWAVE_REGION_LONG_RANGE_MASK  (1u << RAIL_ZWAVE_REGION_LONG_RANGE_SHIFT)
+/** A value representing lowside configurations: For Series 2: JP and KR, for Series 1: KR */
+#define RAIL_ZWAVE_REGION_LOW_SIDE_MASK (1u << RAIL_ZWAVE_REGION_LOW_SIDE_SHIFT)
+/** A value representing Long Range End Device region */
+#define RAIL_ZWAVE_REGION_LONG_RANGE_END_MASK (1u << RAIL_ZWAVE_REGION_LONG_RANGE_END_SHIFT)
+/** A value representing No bit to be enabled */
+#define RAIL_ZWAVE_REGION_SPECIFIC_NONE 0u
+#endif // DOXYGEN SHOULD SKIP THIS
+
 /**
  * Sentinel value to indicate that a channel (and thus its frequency)
  * are invalid.
@@ -277,7 +327,7 @@ RAIL_ENUM(RAIL_ZWAVE_Baud_t) {
 #define RAIL_ZWAVE_LR             ((RAIL_ZWAVE_Baud_t) RAIL_ZWAVE_LR)
 #define RAIL_ZWAVE_ENERGY_DETECT  ((RAIL_ZWAVE_Baud_t) RAIL_ZWAVE_ENERGY_DETECT)
 #define RAIL_ZWAVE_INVALID        ((RAIL_ZWAVE_Baud_t) RAIL_ZWAVE_INVALID)
-#endif//DOXYGEN_SHOULD_SKIP_THIS
+#endif //DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * @enum RAIL_ZWAVE_RegionId_t
@@ -299,6 +349,9 @@ RAIL_ENUM(RAIL_ZWAVE_RegionId_t) {
   RAIL_ZWAVE_REGIONID_US_LR1,  /**< United States, with first long range PHY*/
   RAIL_ZWAVE_REGIONID_US_LR2,  /**< United States, with second long range PHY*/
   RAIL_ZWAVE_REGIONID_US_LR_END_DEVICE, /**< United States long range end device PHY for both LR frequencies*/
+  RAIL_ZWAVE_REGIONID_EU_LR1,  /**< European Union, with first long range PHY*/
+  RAIL_ZWAVE_REGIONID_EU_LR2,  /**< European Union, with second long range PHY*/
+  RAIL_ZWAVE_REGIONID_EU_LR_END_DEVICE, /**< European Union long range end device PHY for both LR frequencies*/
   RAIL_ZWAVE_REGIONID_COUNT    /**< Count of known regions, must be last*/
 };
 
@@ -319,8 +372,11 @@ RAIL_ENUM(RAIL_ZWAVE_RegionId_t) {
 #define RAIL_ZWAVE_REGIONID_US_LR1 ((RAIL_ZWAVE_RegionId_t) RAIL_ZWAVE_REGIONID_US_LR1)
 #define RAIL_ZWAVE_REGIONID_US_LR2 ((RAIL_ZWAVE_RegionId_t) RAIL_ZWAVE_REGIONID_US_LR2)
 #define RAIL_ZWAVE_REGIONID_US_LR_END_DEVICE ((RAIL_ZWAVE_RegionId_t) RAIL_ZWAVE_REGIONID_US_LR_END_DEVICE)
+#define RAIL_ZWAVE_REGIONID_EU_LR1 ((RAIL_ZWAVE_RegionId_t) RAIL_ZWAVE_REGIONID_EU_LR1)
+#define RAIL_ZWAVE_REGIONID_EU_LR2 ((RAIL_ZWAVE_RegionId_t) RAIL_ZWAVE_REGIONID_EU_LR2)
+#define RAIL_ZWAVE_REGIONID_EU_LR_END_DEVICE ((RAIL_ZWAVE_RegionId_t) RAIL_ZWAVE_REGIONID_EU_LR_END_DEVICE)
 #define RAIL_ZWAVE_REGIONID_COUNT ((RAIL_ZWAVE_RegionId_t) RAIL_ZWAVE_REGIONID_COUNT)
-#endif//DOXYGEN_SHOULD_SKIP_THIS
+#endif //DOXYGEN_SHOULD_SKIP_THIS
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 // Largest ACK timeout period based on
@@ -334,11 +390,11 @@ RAIL_ENUM(RAIL_ZWAVE_RegionId_t) {
 #define RAIL_ZWAVE_TIME_IDLE_TO_TX_US        (0U)
 #define RAIL_ZWAVE_TIME_RX_TO_TX_US          (1000U)
 
-#endif//DOXYGEN_SHOULD_SKIP_THIS
+#endif //DOXYGEN_SHOULD_SKIP_THIS
 
 /**
- * Invalid Beam TX power value returned when \ref RAIL_ZWAVE_GetLrBeamTxPower
- * is called after receiving a regular non long range beam.
+ * Invalid beam TX power value returned when \ref RAIL_ZWAVE_GetLrBeamTxPower
+ * is called after receiving a regular non-long-range beam.
  */
 #define RAIL_ZWAVE_LR_BEAM_TX_POWER_INVALID  (0xFFU)
 
@@ -357,7 +413,7 @@ typedef struct RAIL_ZWAVE_LrAckData {
 
 /**
  * @struct RAIL_ZWAVE_BeamRxConfig_t
- * @brief Configuration structure for Z-Wave Beam Detection.
+ * @brief Configuration structure for Z-Wave beam detection.
  * This structure should not be used without direct instruction
  * by Silicon Labs. Appropriate defaults for this are built into
  * the RAIL library.
@@ -387,7 +443,19 @@ typedef struct RAIL_ZWAVE_RegionConfig {
   RAIL_TxPower_t maxPower[RAIL_NUM_ZWAVE_CHANNELS];                   /**< The maximum power allowed on the channel*/
   RAIL_ZWAVE_Baud_t baudRate[RAIL_NUM_ZWAVE_CHANNELS];                /**< Channel baud rate index*/
   RAIL_ZWAVE_RegionId_t regionId;                                     /**< Identification number for the region*/
+  RAIL_ZWAVE_RegionOptions_t regionSpecific;                                             /**< Encapsulates region specific data*/
 } RAIL_ZWAVE_RegionConfig_t;
+
+/**
+ * @struct RAIL_ZWAVE_IrcalVal_t
+ * @brief Structure for Z-Wave Image Rejection Calibration.
+ *
+ * @note Index 0 will hold the low side image rejection calibration value (channel 0),
+ * while index 1 will hold the high side image rejection value (channel 1).
+ */
+typedef struct RAIL_ZWAVE_IrcalVal {
+  RAIL_IrCalValues_t imageRejection[2];      /**< Low side and high side image rejection values*/
+} RAIL_ZWAVE_IrcalVal_t;
 
 /**
  * @typedef RAIL_RxChannelHoppingParameters_t
@@ -410,6 +478,28 @@ typedef RAIL_RxChannelHoppingParameter_t RAIL_RxChannelHoppingParameters_t[RAIL_
 RAIL_Status_t RAIL_ZWAVE_ConfigRegion(RAIL_Handle_t railHandle,
                                       const RAIL_ZWAVE_RegionConfig_t *regionCfg);
 
+/**
+ * Perform image rejection calibration on all valid channels of a
+ * Z-Wave region.
+ *
+ * @param[in] railHandle A handle of RAIL instance.
+ * @param[in, out] pIrCalVals An application-provided pointer of
+ *  type \ref RAIL_ZWAVE_IrcalVal_t. This is populated with image rejection
+ *  calibration values, if not NULL or initialized with
+ *  \ref RAIL_CAL_INVALID_VALUE or if forceIrcal is true.
+ * @param[in] forceIrcal If true, will always perform image rejection calibration
+ *  and not use previously cached values.
+ * @return Status code indicating success of the function call.
+ *
+ * Note: This function also calibrates for beam detection and should be
+ *  called before \ref RAIL_ZWAVE_ReceiveBeam() and after the Z-Wave region
+ *  has been configured via \ref RAIL_ZWAVE_ConfigRegion().
+ *  Channel hopping must be disabled otherwise this function will return
+ *  \ref RAIL_STATUS_INVALID_CALL.
+ */
+RAIL_Status_t RAIL_ZWAVE_PerformIrcal(RAIL_Handle_t railHandle,
+                                      RAIL_ZWAVE_IrcalVal_t *pIrCalVals,
+                                      bool forceIrcal);
 /**
  * Initialize RAIL for Z-Wave features.
  *
@@ -476,12 +566,12 @@ RAIL_Status_t RAIL_ZWAVE_SetNodeId(RAIL_Handle_t railHandle,
  * Inform RAIL of the Z-Wave node's HomeId and its hash for receive filtering
  *
  * @param[in] railHandle A handle of RAIL instance.
- * @param[in] homeId A Z-Wave Home ID.
- * @param[in] homeIdHash The hash of the Home Id expected in Beam frames.
- *   If this is \ref RAIL_ZWAVE_HOME_ID_HASH_DONT_CARE, Beam frame detection
- *   will not check the HomeIdHash in a received Beam frame at all, and
- *   \ref RAIL_EVENT_ZWAVE_BEAM will trigger based solely on the nodeId
- *   in the Beam frame.
+ * @param[in] homeId A Z-Wave HomeId.
+ * @param[in] homeIdHash The hash of the HomeId expected in beam frames.
+ *   If this is \ref RAIL_ZWAVE_HOME_ID_HASH_DONT_CARE, beam frame detection
+ *   will not check the HomeIdHash in a received beam frame at all, and
+ *   \ref RAIL_EVENT_ZWAVE_BEAM will trigger based solely on the NodeId
+ *   in the beam frame.
  * @return Status code indicating success of the function call.
  *
  * @note Until this API is called, RAIL will assume the HomeId is an
@@ -493,8 +583,8 @@ RAIL_Status_t RAIL_ZWAVE_SetHomeId(RAIL_Handle_t railHandle,
                                    RAIL_ZWAVE_HomeIdHash_t homeIdHash);
 
 /**
- * Get the NodeId of the most recently seen Beam frame that targeted this
- * node.
+ * Get the NodeId of the most recently seen beam frame that triggered
+ * \ref RAIL_EVENT_ZWAVE_BEAM.
  *
  * @param[in] railHandle A handle of RAIL instance.
  * @param[out] pNodeId A pointer to \ref RAIL_ZWAVE_NodeId_t to populate.
@@ -508,8 +598,23 @@ RAIL_Status_t RAIL_ZWAVE_GetBeamNodeId(RAIL_Handle_t railHandle,
                                        RAIL_ZWAVE_NodeId_t *pNodeId);
 
 /**
+ * Get the HomeIdHash of the most recently seen beam frame that triggered
+ * \ref RAIL_EVENT_ZWAVE_BEAM.
+ *
+ * @param[in] railHandle A handle of RAIL instance.
+ * @param[out] pBeamHomeIdHash A pointer to \ref RAIL_ZWAVE_HomeIdHash_t to populate.
+ * @return Status code indicating success of the function call.
+ *
+ * @note This is best called while handling the \ref RAIL_EVENT_ZWAVE_BEAM
+ *   event; if multiple beams are received only the most recent beam's HomeIdHash
+ *   is provided.
+ */
+RAIL_Status_t RAIL_ZWAVE_GetBeamHomeIdHash(RAIL_Handle_t railHandle,
+                                           RAIL_ZWAVE_HomeIdHash_t *pBeamHomeIdHash);
+
+/**
  * Get the channel hopping index of the most recently seen beam frame that
- * targeted this node.
+ * triggered \ref RAIL_EVENT_ZWAVE_BEAM.
  *
  * @param[in] railHandle A handle of RAIL instance.
  * @param[out] pChannelIndex A pointer to a uint8_t to populate with
@@ -526,16 +631,17 @@ RAIL_Status_t RAIL_ZWAVE_GetBeamChannelIndex(RAIL_Handle_t railHandle,
                                              uint8_t *pChannelIndex);
 
 /**
- * Get the TX power used to transmit the long range beam frame.
+ * Get the TX power used by the transmitter of the most recently seen
+ * long range beam frame that triggered \ref RAIL_EVENT_ZWAVE_BEAM.
  *
  * @param[in] railHandle A handle of RAIL instance.
  * @param[out] pLrBeamTxPower An application provided pointer to a uint8_t to
  *   be populated with the TX power of the latest long range beam. This will
  *   be set to \ref RAIL_ZWAVE_LR_BEAM_TX_POWER_INVALID if this API is called
- *   after receiving a regular non long range beam.
+ *   after receiving a regular non-long-range beam.
  * @return Status code indicating success of the function call. This function
  *   will return \ref RAIL_STATUS_INVALID_STATE if called after receiving a
- *   regular non long range beam.
+ *   regular (non-long-range) beam.
  *
  * @note This is best called while handling the \ref RAIL_EVENT_ZWAVE_BEAM
  *   event; if multiple beams are received only the most recent long range
@@ -685,7 +791,7 @@ RAIL_TxPower_t RAIL_ZWAVE_GetTxLowPowerDbm(RAIL_Handle_t railHandle);
  *
  * @return status indicating whether or not the radio was able to configure
  * beam packet detection/reception. Reasons for failure include an un-idled
- * radio or a non Japan or Korea region configured before calling this function.
+ * radio or a non-Japan non-Korea region configured before calling this function.
  */
 RAIL_Status_t RAIL_ZWAVE_ReceiveBeam(RAIL_Handle_t railHandle,
                                      uint8_t *beamDetectIndex,
@@ -821,6 +927,15 @@ extern const RAIL_ZWAVE_RegionConfig_t RAIL_ZWAVE_REGION_US_LR2;
 
 /** US-Long Range End Device, RAIL_ZWAVE_REGION_US_LR_END_DEVICE */
 extern const RAIL_ZWAVE_RegionConfig_t RAIL_ZWAVE_REGION_US_LR_END_DEVICE;
+
+/** EU-Long Range 1, RAIL_ZWAVE_REGION_EU_LR1 */
+extern const RAIL_ZWAVE_RegionConfig_t RAIL_ZWAVE_REGION_EU_LR1;
+
+/** EU-Long Range 2, RAIL_ZWAVE_REGION_EU_LR2 */
+extern const RAIL_ZWAVE_RegionConfig_t RAIL_ZWAVE_REGION_EU_LR2;
+
+/** EU-Long Range End Device, RAIL_ZWAVE_REGION_EU_LR_END_DEVICE */
+extern const RAIL_ZWAVE_RegionConfig_t RAIL_ZWAVE_REGION_EU_LR_END_DEVICE;
 
 /** Invalid Region */
 extern const RAIL_ZWAVE_RegionConfig_t RAIL_ZWAVE_REGION_INVALID;

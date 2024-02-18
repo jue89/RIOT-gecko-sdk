@@ -130,6 +130,22 @@ bool sl_str_is_empty(const char *str);
  ******************************************************************************/
 int sl_strcasecmp(char const *a, char const *b);
 
+/*******************************************************************************
+ * @brief
+ *  Searches for the character in memory, in reverse order.
+ *
+ * @param[in] buff      Address of the memory buffer.
+ *
+ * @param[in] c         Character to look for.
+ *
+ * @param[in] buff_len  Length of the memory buffer.
+ *
+ * @return              The address of the character in the buffer if and only
+ *                      if it was found.
+ *                      NULL if no character was found.
+ ******************************************************************************/
+void* sl_memrchr(void const *buff, char c, size_t buff_len);
+
 /** @} (end addtogroup string) */
 
 #ifdef __cplusplus

@@ -32,6 +32,7 @@
 #define EM_EMU_H
 
 #include "em_device.h"
+#include "sl_status.h"
 #if defined(EMU_PRESENT)
 
 #include <stdbool.h>
@@ -50,6 +51,7 @@ extern "C" {
 /*******************************************************************************
  *******************************   DEFINES   ***********************************
  ******************************************************************************/
+
 #if (defined(_EMU_STATUS_VSCALE_MASK) || defined(_EMU_CTRL_EM23VSCALE_MASK)) \
   && !defined(_SILICON_LABS_GECKO_INTERNAL_SDID_200)
 /** Voltage scaling present */
@@ -61,18 +63,21 @@ extern "C" {
 #endif
 
 #if defined(_EMU_DCDCCTRL_MASK)
+/** DC-DC buck converter present */
 #define EMU_SERIES1_DCDC_BUCK_PRESENT
 #endif
 
 #if defined(_SILICON_LABS_DCDC_FEATURE)                                    \
   && ((_SILICON_LABS_DCDC_FEATURE == _SILICON_LABS_DCDC_FEATURE_DCDC_BUCK) \
   || (_SILICON_LABS_DCDC_FEATURE == _SILICON_LABS_DCDC_FEATURE_DCDC_BOB))
+/** DC-DC buck converter present */
 #define EMU_SERIES2_DCDC_BUCK_PRESENT
 #endif
 
 #if defined(_SILICON_LABS_DCDC_FEATURE)                                     \
   && ((_SILICON_LABS_DCDC_FEATURE == _SILICON_LABS_DCDC_FEATURE_DCDC_BOOST) \
   || (_SILICON_LABS_DCDC_FEATURE == _SILICON_LABS_DCDC_FEATURE_DCDC_BOB))
+/** DC-DC boost converter present */
 #define EMU_SERIES2_DCDC_BOOST_PRESENT
 #endif
 
@@ -327,6 +332,7 @@ typedef enum {
 
 #if defined(EMU_SERIES2_DCDC_BUCK_PRESENT) \
   || defined(EMU_SERIES2_DCDC_BOOST_PRESENT)
+
 /** DCDC mode. */
 typedef enum {
   emuDcdcMode_Bypass     = _DCDC_CTRL_MODE_BYPASS,            /**< DCDC regulator bypass. */
@@ -393,19 +399,25 @@ typedef enum {
 
 /** DCDC Buck drive speed. */
 typedef enum {
-  emuDcdcDriveSpeed_BestEmi        = _DCDC_EM01CTRL0_DRVSPEED_BEST_EMI,        /**< Lowest efficiency, lowest EMI. */
-  emuDcdcDriveSpeed_Default        = _DCDC_EM01CTRL0_DRVSPEED_DEFAULT_SETTING, /**< Default efficiency, acceptable EMI level. */
-  emuDcdcDriveSpeed_Intermediate   = _DCDC_EM01CTRL0_DRVSPEED_INTERMEDIATE,    /**< Small increase in efficiency from the default setting. */
-  emuDcdcDriveSpeed_BestEfficiency = _DCDC_EM01CTRL0_DRVSPEED_BEST_EFFICIENCY  /**< Highest efficiency, highest EMI. Small increase in efficiency from INTERMEDIATE setting. */
+  emuDcdcDriveSpeed_BestEmi        = _DCDC_EM01CTRL0_DRVSPEED_DEFAULT_SETTING,        /**< Recommend no options other than DEFAULT be used here, as there is no benefit. */
+  emuDcdcDriveSpeed_Default        = _DCDC_EM01CTRL0_DRVSPEED_DEFAULT_SETTING,        /**< Recommend no options other than DEFAULT be used here, as there is no benefit. */
+  emuDcdcDriveSpeed_Intermediate   = _DCDC_EM01CTRL0_DRVSPEED_DEFAULT_SETTING,        /**< Recommend no options other than DEFAULT be used here, as there is no benefit. */
+  emuDcdcDriveSpeed_BestEfficiency = _DCDC_EM01CTRL0_DRVSPEED_DEFAULT_SETTING         /**< Recommend no options other than DEFAULT be used here, as there is no benefit. */
 } EMU_DcdcDriveSpeed_TypeDef;
 
 /** DCDC Buck peak current setting. */
 typedef enum {
 #if defined(_DCDC_EM23CTRL0_IPKVAL_Load5mA)
-  emuDcdcPeakCurrent_Load5mA  = _DCDC_EM23CTRL0_IPKVAL_Load5mA,  /**< Load 5mA, peak current 90mA */
+  emuDcdcPeakCurrent_Load5mA  = _DCDC_EM23CTRL0_IPKVAL_Load5mA,  /**< Load 5mA, peak current 90mA. */
+#endif
+#if defined(_DCDC_EM23CTRL0_IPKVAL_LOAD5MA)
+  emuDcdcPeakCurrent_Load5mA  = _DCDC_EM23CTRL0_IPKVAL_LOAD5MA,  /**< Load 5mA, peak current 90mA. */
 #endif
 #if defined(_DCDC_EM23CTRL0_IPKVAL_Load10mA)
-  emuDcdcPeakCurrent_Load10mA = _DCDC_EM23CTRL0_IPKVAL_Load10mA, /**< Load 10mA, peak current 150mA */
+  emuDcdcPeakCurrent_Load10mA = _DCDC_EM23CTRL0_IPKVAL_Load10mA, /**< Load 10mA, peak current 150mA. */
+#endif
+#if defined(_DCDC_EM23CTRL0_IPKVAL_LOAD10MA)
+  emuDcdcPeakCurrent_Load10mA = _DCDC_EM23CTRL0_IPKVAL_LOAD10MA, /**< Load 10mA, peak current 150mA. */
 #endif
 #if defined(_DCDC_EM01CTRL0_IPKVAL_Load28mA)
   emuDcdcPeakCurrent_Load28mA = _DCDC_EM01CTRL0_IPKVAL_Load28mA, /**< Load 28mA, peak current 70mA. */
@@ -443,10 +455,10 @@ typedef enum {
 #if defined(EMU_SERIES2_DCDC_BOOST_PRESENT)
 /** DCDC Boost drive speed. */
 typedef enum {
-  emuDcdcBoostDriveSpeed_BestEmi        = _DCDC_BSTEM01CTRL_DRVSPEED_BEST_EMI,        /**< Lowest efficiency, lowest EMI. */
-  emuDcdcBoostDriveSpeed_Default        = _DCDC_BSTEM01CTRL_DRVSPEED_DEFAULT_SETTING, /**< Default efficiency, acceptable EMI level. */
-  emuDcdcBoostDriveSpeed_Intermediate   = _DCDC_BSTEM01CTRL_DRVSPEED_INTERMEDIATE,    /**< Small increase in efficiency from the default setting. */
-  emuDcdcBoostDriveSpeed_BestEfficiency = _DCDC_BSTEM01CTRL_DRVSPEED_BEST_EFFICIENCY  /**< Highest efficiency, highest EMI. Small increase in efficiency from INTERMEDIATE setting. */
+  emuDcdcBoostDriveSpeed_BestEmi        = _DCDC_BSTEM01CTRL_DRVSPEED_DEFAULT_SETTING,        /**< Recommend no options other than DEFAULT be used here, as there is no benefit. */
+  emuDcdcBoostDriveSpeed_Default        = _DCDC_BSTEM01CTRL_DRVSPEED_DEFAULT_SETTING,        /**< Recommend no options other than DEFAULT be used here, as there is no benefit. */
+  emuDcdcBoostDriveSpeed_Intermediate   = _DCDC_BSTEM01CTRL_DRVSPEED_DEFAULT_SETTING,        /**< Recommend no options other than DEFAULT be used here, as there is no benefit. */
+  emuDcdcBoostDriveSpeed_BestEfficiency = _DCDC_BSTEM01CTRL_DRVSPEED_DEFAULT_SETTING         /**< Recommend no options other than DEFAULT be used here, as there is no benefit. */
 } EMU_DcdcBoostDriveSpeed_TypeDef;
 
 /** DCDC Boost EM01 peak current setting. */
@@ -913,31 +925,14 @@ typedef struct {
     emuDcdcDriveSpeed_Default,     /**< Default efficiency in EM0/1. */      \
     emuDcdcDriveSpeed_Default,     /**< Default efficiency in EM2/3. */      \
     emuDcdcPeakCurrent_Load60mA,   /**< Default peak current in EM0/1. */    \
-    emuDcdcPeakCurrent_Load36mA    /**< Default peak current in EM2/3. */    \
+    emuDcdcPeakCurrent_Load5mA     /**< Default peak current in EM2/3. */    \
   }
-#elif defined(_SILICON_LABS_32B_SERIES_2_CONFIG_3)
-#define EMU_DCDCINIT_DEFAULT                                                 \
-  {                                                                          \
-    emuDcdcMode_Regulation,        /**< DCDC regulator on. */                \
-    emuVreginCmpThreshold_2v3,     /**< 2.3V VREGIN comparator threshold. */ \
-    emuDcdcTonMaxTimeout_1P19us,   /**< Ton max is 1.19us. */                \
-    emuDcdcDriveSpeed_Default,     /**< Default efficiency in EM0/1. */      \
-    emuDcdcDriveSpeed_Default,     /**< Default efficiency in EM2/3. */      \
-    emuDcdcPeakCurrent_Load36mA,   /**< Default peak current in EM0/1. */    \
-    emuDcdcPeakCurrent_Load36mA    /**< Default peak current in EM2/3. */    \
-  }
-#elif defined(_SILICON_LABS_32B_SERIES_2_CONFIG_4) || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_5)
-#define EMU_DCDCINIT_DEFAULT                                                 \
-  {                                                                          \
-    emuDcdcMode_Regulation,        /**< DCDC regulator on. */                \
-    emuVreginCmpThreshold_2v3,     /**< 2.3V VREGIN comparator threshold. */ \
-    emuDcdcTonMaxTimeout_1P19us,   /**< Ton max is 1.19us. */                \
-    emuDcdcDriveSpeed_Default,     /**< Default efficiency in EM0/1. */      \
-    emuDcdcDriveSpeed_Default,     /**< Default efficiency in EM2/3. */      \
-    emuDcdcPeakCurrent_Load60mA,   /**< Default peak current in EM0/1. */    \
-    emuDcdcPeakCurrent_Load36mA    /**< Default peak current in EM2/3. */    \
-  }
-#elif defined(_SILICON_LABS_32B_SERIES_2_CONFIG_7)
+#elif defined(_SILICON_LABS_32B_SERIES_2_CONFIG_3) \
+  || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_4)  \
+  || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_5)  \
+  || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_6)  \
+  || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_7)  \
+  || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_8)
 #define EMU_DCDCINIT_DEFAULT                                                 \
   {                                                                          \
     emuDcdcMode_Regulation,        /**< DCDC regulator on. */                \
@@ -949,7 +944,7 @@ typedef struct {
     emuDcdcPeakCurrent_Load5mA     /**< Default peak current in EM2/3. */    \
   }
 #endif
-#endif /* SERIES2_DCDC_BBUCK_PRESENT */
+#endif /* SERIES2_DCDC_BUCK_PRESENT */
 
 #if defined(EMU_SERIES1_DCDC_BUCK_PRESENT)
 /** DCDC initialization structure. */
@@ -1125,6 +1120,7 @@ void EMU_EM4Init(const EMU_EM4Init_TypeDef *em4Init);
 void EMU_EM4PresleepHook(void);
 void EMU_EFPEM4PresleepHook(void);
 void EMU_EnterEM4(void);
+void EMU_EnterEM4Wait(void);
 #if defined(_EMU_EM4CTRL_MASK)
 void EMU_EnterEM4H(void);
 void EMU_EnterEM4S(void);
@@ -1176,10 +1172,13 @@ void EMU_BUStatEnSet(bool enable);
 void EMU_BUEnableSet(bool enable);
 #endif
 
-#if defined(EMU_SERIES1_DCDC_BUCK_PRESENT)   \
-  || (defined(EMU_SERIES2_DCDC_BUCK_PRESENT) \
-  || defined(EMU_SERIES2_DCDC_BOOST_PRESENT))
+#if defined(EMU_SERIES1_DCDC_BUCK_PRESENT)
 void EMU_DCDCModeSet(EMU_DcdcMode_TypeDef dcdcMode);
+#endif
+
+#if (defined(EMU_SERIES2_DCDC_BUCK_PRESENT) \
+  || defined(EMU_SERIES2_DCDC_BOOST_PRESENT))
+sl_status_t EMU_DCDCModeSet(EMU_DcdcMode_TypeDef dcdcMode);
 #endif
 
 #if defined(EMU_SERIES2_DCDC_BUCK_PRESENT) \
@@ -1275,7 +1274,7 @@ __STATIC_INLINE void EMU_DCDCUnlock(void)
  ******************************************************************************/
 __STATIC_INLINE void EMU_DCDCSync(uint32_t mask)
 {
-  while (DCDC->SYNCBUSY & mask) {
+  while (0UL != (DCDC->SYNCBUSY & mask)) {
     /* Wait for previous synchronization to finish */
   }
 }
@@ -1302,6 +1301,12 @@ __STATIC_INLINE bool EMU_LDOStatusGet(void)
 /***************************************************************************//**
  * @brief
  *   Enter energy mode 1 (EM1).
+ *
+ * @note
+ *   This function is incompatible with the Power Manager module. When the
+ *   Power Manager module is present, it must be the one deciding at which
+ *   EM level the device sleeps to ensure the application properly works. Using
+ *   both at the same time could lead to undefined behavior in the application.
  ******************************************************************************/
 __STATIC_INLINE void EMU_EnterEM1(void)
 {
@@ -1421,18 +1426,28 @@ __STATIC_INLINE void EMU_IntEnable(uint32_t flags)
 #if defined(EMU_CTRL_EFPDRVDVDD)
 /***************************************************************************//**
  * @brief
- *   Enable EFP interrupts.
+ *   Disable one or more EFP interrupts.
  *
  * @param[in] flags
- *   Enable/disable EFP interrupts.
+ *   EFP interrupt sources to disable. Use one or more valid
+ *   interrupt flags for the EFP module (EFPIENnnn).
+ ******************************************************************************/
+__STATIC_INLINE void EMU_EFPIntDisable(uint32_t flags)
+{
+  EMU->EFPIEN_CLR = flags;
+}
+
+/***************************************************************************//**
+ * @brief
+ *   Enable one or more EFP interrupts.
+ *
+ * @param[in] flags
+ *   EFP interrupt sources to enable. Use one or more valid
+ *   interrupt flags for the EFP module (EFPIENnnn).
  ******************************************************************************/
 __STATIC_INLINE void EMU_EFPIntEnable(uint32_t flags)
 {
-#if defined(EMU_HAS_SET_CLEAR)
   EMU->EFPIEN_SET = flags;
-#else
-  EMU->EFPIEN |= flags;
-#endif
 }
 
 /***************************************************************************//**
@@ -1452,6 +1467,41 @@ __STATIC_INLINE uint32_t EMU_EFPIntGet(void)
 
 /***************************************************************************//**
  * @brief
+ *   Get enabled and pending EMU EFP interrupt flags.
+ *   Useful for handling more interrupt sources in the same interrupt handler.
+ *
+ * @note
+ *   Interrupt flags are not cleared by the use of this function.
+ *
+ * @return
+ *   Pending and enabled EMU EFP interrupt sources
+ *   Return value is the bitwise AND of
+ *   - the enabled interrupt sources in EMU_EFPIEN and
+ *   - the pending interrupt flags EMU_EFPIF.
+ ******************************************************************************/
+__STATIC_INLINE uint32_t EMU_EFPIntGetEnabled(void)
+{
+  uint32_t ien;
+
+  ien = EMU->EFPIEN;
+  return EMU->EFPIF & ien;
+}
+
+/***************************************************************************//**
+ * @brief
+ *   Set one or more pending EMU EFP interrupts.
+ *
+ * @param[in] flags
+ *   EMU EFP interrupt sources to set to pending. Use one or more valid
+ *   interrupt flags for the EMU EFP module (EMU_EFPIFSnnn).
+ ******************************************************************************/
+__STATIC_INLINE void EMU_EFPIntSet(uint32_t flags)
+{
+  EMU->EFPIF_SET = flags;
+}
+
+/***************************************************************************//**
+ * @brief
  *   Clear one or more pending EMU EFP interrupts.
  *
  * @param[in] flags
@@ -1460,11 +1510,7 @@ __STATIC_INLINE uint32_t EMU_EFPIntGet(void)
  ******************************************************************************/
 __STATIC_INLINE void EMU_EFPIntClear(uint32_t flags)
 {
-#if defined(EMU_HAS_SET_CLEAR)
   EMU->EFPIF_CLR = flags;
-#else
-  EMU->EFPIFC = flags;
-#endif
 }
 #endif
 
@@ -1658,7 +1704,7 @@ __STATIC_INLINE void EMU_UnlatchPinRetention(void)
 __STATIC_INLINE bool EMU_TemperatureReady(void)
 {
 #if defined(EMU_STATUS_FIRSTTEMPDONE)
-  return EMU->STATUS & EMU_STATUS_FIRSTTEMPDONE;
+  return (0UL != (EMU->STATUS & EMU_STATUS_FIRSTTEMPDONE));
 #else
   return !((EMU->TEMP & _EMU_TEMP_TEMP_MASK) == 0u);
 #endif
@@ -1679,9 +1725,9 @@ __STATIC_INLINE bool EMU_TemperatureReady(void)
  ******************************************************************************/
 __STATIC_INLINE float EMU_TemperatureAvgGet(void)
 {
-  return ((float) ((EMU->TEMP & _EMU_TEMP_TEMPAVG_MASK)
-                   >> _EMU_TEMP_TEMPAVG_SHIFT)
-          ) / 4.0f - EMU_TEMP_ZERO_C_IN_KELVIN;
+  uint32_t tmp = ((EMU->TEMP & _EMU_TEMP_TEMPAVG_MASK)
+                  >> _EMU_TEMP_TEMPAVG_SHIFT);
+  return (float)tmp / 4.0f - EMU_TEMP_ZERO_C_IN_KELVIN;
 }
 
 /***************************************************************************//**
@@ -1697,7 +1743,7 @@ __STATIC_INLINE float EMU_TemperatureAvgGet(void)
  ******************************************************************************/
 __STATIC_INLINE void EMU_TemperatureAvgRequest(EMU_TempAvgNum_TypeDef numSamples)
 {
-  BUS_RegBitWrite(&EMU->CTRL, _EMU_CTRL_TEMPAVGNUM_SHIFT, numSamples);
+  BUS_RegBitWrite(&EMU->CTRL, _EMU_CTRL_TEMPAVGNUM_SHIFT, (unsigned int)numSamples);
   EMU->CMD = 1u << _EMU_CMD_TEMPAVGREQ_SHIFT;
 }
 

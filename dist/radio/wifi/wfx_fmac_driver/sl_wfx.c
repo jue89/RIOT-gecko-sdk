@@ -165,7 +165,7 @@ sl_status_t sl_wfx_init(sl_wfx_context_t *context)
   // when the Wi-Fi chip is in *Trusted* mode
 
   /* Get secure link mode */
-  link_mode = startup_info->body.capabilities.linkmode;
+  link_mode = (sl_wfx_secure_link_mode_t)startup_info->body.capabilities.linkmode;
 
   result = sl_wfx_host_get_secure_link_mac_key(sl_wfx_context->secure_link_mac_key);
 
@@ -182,7 +182,7 @@ sl_status_t sl_wfx_init(sl_wfx_context_t *context)
         /* In this mode it is assumed that the key is not burned */
         result = sl_wfx_secure_link_set_mac_key(sl_wfx_context->secure_link_mac_key, SECURE_LINK_MAC_KEY_DEST_RAM);
         SL_WFX_ERROR_CHECK(result);
-      /* Fallthrough on purpose */
+      /* FALLTHROUGH */
       case SL_WFX_LINK_MODE_ACTIVE:
         result = sl_wfx_secure_link_renegotiate_session_key();
         SL_WFX_ERROR_CHECK(result);
@@ -355,6 +355,8 @@ sl_status_t sl_wfx_send_join_command(const uint8_t  *ssid,
   connect_request->prevent_roaming       = prevent_roaming;
   if (security_mode == WFM_SECURITY_MODE_WPA3_SAE) {
     connect_request->mgmt_frame_protection = WFM_MGMT_FRAME_PROTECTION_MANDATORY;
+  } else if (security_mode == WFM_SECURITY_MODE_WPA3_SAE_WPA2_PSK) {
+    connect_request->mgmt_frame_protection = WFM_MGMT_FRAME_PROTECTION_OPTIONAL;
   } else {
     connect_request->mgmt_frame_protection = sl_wfx_htole16(management_frame_protection);
   }
@@ -753,20 +755,27 @@ sl_status_t sl_wfx_disconnect_ap_client_command(const sl_wfx_mac_address_t *clie
  *   @arg         WFM_PM_MODE_ACTIVE
  *   @arg         WFM_PM_MODE_BEACON
  *   @arg         WFM_PM_MODE_DTIM
+ * @param strategy is the device power save polling strategy
+ *   @arg         WFM_PM_POLL_UAPSD
+ *   @arg         WFM_PM_POLL_FAST_PS
  * @param interval is the number of beacons/DTIMs to skip while sleeping
+ * @param timeout is the time after which the device switches to power save after having been active in Fast Power Save mode
  * @returns SL_STATUS_OK if the command has been sent correctly,
  * SL_STATUS_FAIL otherwise
  *
  * @note the power mode has to be set once the connection with the AP is
  * established
  *****************************************************************************/
-sl_status_t sl_wfx_set_power_mode(sl_wfx_pm_mode_t mode, sl_wfx_pm_poll_t strategy, uint16_t interval)
+sl_status_t sl_wfx_set_power_mode(sl_wfx_pm_mode_t mode, sl_wfx_pm_poll_t strategy, uint16_t interval, uint8_t timeout)
 {
   sl_wfx_set_pm_mode_req_body_t payload;
 
-  payload.power_mode       = mode;
-  payload.polling_strategy = strategy;
-  payload.listen_interval  = sl_wfx_htole16(interval);
+  payload.power_mode           = mode;
+  payload.polling_strategy     = strategy;
+  payload.listen_interval      = sl_wfx_htole16(interval);
+  if (strategy == WFM_PM_POLL_FAST_PS) {
+    payload.fast_psm_idle_period = timeout;
+  }
 
   return sl_wfx_send_command(SL_WFX_SET_PM_MODE_REQ_ID, &payload, sizeof(payload), SL_WFX_STA_INTERFACE, NULL);
 }
@@ -1042,15 +1051,19 @@ sl_status_t sl_wfx_set_roam_parameters(uint8_t rcpi_threshold,
 }
 
 /**************************************************************************//**
- * @brief Set the rate mode allowed by the station once connected
+ * @brief Set the TX rate for station or softAP mode.
  *
- * @param rate_set_bitmask is the list of rates that will be used in STA mode.
+ * @param rate_set_bitmask is the list of rates that will be used in STA/SOFTAP mode.
+ * @param use_minstrel is to use the Minstrel rate algorithm or not. (0: AARF & 1: Minstrel)
+ * @param interface is the interface (station/softAP) affected by the command.
+ *   @arg         SL_WFX_STA_INTERFACE
+ *   @arg         SL_WFX_SOFTAP_INTERFACE
  * @returns SL_STATUS_OK if the setting is applied correctly, SL_STATUS_FAIL otherwise
  *
- * @note Parameters set by sl_wfx_set_tx_rate_parameters() take effect at the next
- * connection. Calling it while connected has no immediate effect.
+ * @note For station, sl_wfx_set_tx_rate_parameters() should be called before connection.
+ * For softap, the rate can be dynamically set before or after starting the softap
  *****************************************************************************/
-sl_status_t sl_wfx_set_tx_rate_parameters(sl_wfx_rate_set_bitmask_t rate_set_bitmask, uint8_t use_minstrel)
+sl_status_t sl_wfx_set_tx_rate_parameters(sl_wfx_rate_set_bitmask_t rate_set_bitmask, uint8_t use_minstrel, sl_wfx_interface_t interface)
 {
   sl_wfx_set_tx_rate_parameters_req_body_t payload;
 
@@ -1058,7 +1071,7 @@ sl_status_t sl_wfx_set_tx_rate_parameters(sl_wfx_rate_set_bitmask_t rate_set_bit
   payload.use_minstrel = use_minstrel;
   memcpy(&payload.rate_set_bitmask, &rate_set_bitmask, sizeof(sl_wfx_rate_set_bitmask_t));
 
-  return sl_wfx_send_command(SL_WFX_SET_TX_RATE_PARAMETERS_REQ_ID, &payload, sizeof(payload), SL_WFX_STA_INTERFACE, NULL);
+  return sl_wfx_send_command(SL_WFX_SET_TX_RATE_PARAMETERS_REQ_ID, &payload, sizeof(payload), interface, NULL);
 }
 
 /**************************************************************************//**
@@ -1150,6 +1163,44 @@ sl_status_t sl_wfx_get_pmk(sl_wfx_password_t *password,
 }
 
 /**************************************************************************//**
+ * @brief Retrieve per-interface statistics. Values returned are cumulative, 
+ * computed from the start of the connection and in case of roaming & over multiple APs.
+ *
+ * @param stats is current retrieved per-interface statistics.
+ * @returns SL_STATUS_OK if the command has been sent correctly,
+ * SL_STATUS_FAIL otherwise
+*****************************************************************************/
+sl_status_t sl_wfx_get_statistics(sl_wfx_statistics_t *stats)
+{
+  sl_status_t result;
+  sl_wfx_get_statistics_cnf_t *reply = NULL;
+
+  result = sl_wfx_send_command(SL_WFX_GET_STATISTICS_REQ_ID,
+                              NULL,
+                              0,
+                              SL_WFX_STA_INTERFACE,
+                              (sl_wfx_generic_confirmation_t **)&reply);
+
+  if (SL_STATUS_OK == result) {
+    result = sl_wfx_get_status_code(sl_wfx_htole32(reply->body.status), SL_WFX_GET_STATISTICS_REQ_ID);
+    if (SL_STATUS_OK == result) {
+      /* Retrieve parameters statistics */
+      stats->beacon_rx_count = sl_wfx_htole32(reply->body.beacon_rx_count);
+      stats->beacon_rx_missed_count = sl_wfx_htole32(reply->body.beacon_rx_missed_count);
+      stats->beacon_tbtt_diff = (int32_t)sl_wfx_htole32(reply->body.beacon_tbtt_diff);
+      stats->unicast_rx_count = sl_wfx_htole32(reply->body.unicast_rx_count);
+      stats->unicast_tx_success_count = sl_wfx_htole32(reply->body.unicast_tx_success_count);
+      stats->unicast_tx_failure_count = sl_wfx_htole32(reply->body.unicast_tx_failure_count);
+      stats->multicast_rx_count = sl_wfx_htole32(reply->body.multicast_rx_count);
+      stats->multicast_tx_success_count = sl_wfx_htole32(reply->body.multicast_tx_success_count);
+      stats->multicast_tx_failure_count = sl_wfx_htole32(reply->body.multicast_tx_failure_count);
+    }
+  }
+  
+  return result;
+}
+
+/**************************************************************************//**
  * @brief Get the signal strength of the last packets received from an AP client
  *
  * @param client is the mac address of the client
@@ -1209,7 +1260,14 @@ sl_status_t sl_wfx_ext_auth(sl_wfx_ext_auth_data_type_t auth_data_type,
   result = sl_wfx_allocate_command_buffer(&frame, SL_WFX_EXT_AUTH_REQ_ID, SL_WFX_CONTROL_BUFFER, request_length);
   SL_WFX_ERROR_CHECK(result);
 
+#if defined(__ICCARM__)
+/* Suppress warnings originating from use of address of unaligned structure member with IAR Embedded Workbench */
+#pragma diag_suppress=Pa039
+#endif
   memset((void *)&frame->header.length, 0, request_length);
+#if defined(__ICCARM__)
+#pragma diag_default=Pa039
+#endif
 
   frame->header.info = SL_WFX_STA_INTERFACE;
 

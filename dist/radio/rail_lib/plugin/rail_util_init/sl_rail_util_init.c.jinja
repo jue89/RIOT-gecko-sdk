@@ -73,7 +73,9 @@ static TIMER_TypeDef *timer = TIMER0;
 static void setupTimingTestTimer(void)
 {
   // Clock TIMER0 using the HF clock
-  CMU_ClockSelectSet(cmuClock_TIMER0, cmuSelect_HFXO);
+#if defined(_SILICON_LABS_32B_SERIES_2)
+  CMU_CLOCK_SELECT_SET(TIMER0, HFXO);
+#endif
   CMU_ClockEnable(cmuClock_TIMER0, true);
   // Use default configuration, prescaled by 8.
   TIMER_Init_TypeDef timerCfg = TIMER_INIT_DEFAULT;
@@ -91,6 +93,7 @@ static void sl_rail_util_init_{{ inst | lower }}(void)
     .eventsCallback = &sli_rail_util_on_event,
     // Other fields are ignored nowadays
   };
+  (void) status; // Suppress compiler warning if status ends up unused
 #ifdef SL_CATALOG_TIMING_TEST_PRESENT
   setupTimingTestTimer();
   sli_timing_start_tick = timer->CNT;

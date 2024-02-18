@@ -375,7 +375,7 @@ void PRS_SourceAsyncSignalSet(unsigned int ch,
 }
 #endif
 
-#if defined(_PRS_ROUTELOC0_MASK) || (_PRS_ROUTE_MASK)
+#if defined(_PRS_ROUTELOC0_MASK) || (defined(_PRS_ROUTE_MASK) && (_PRS_ROUTE_MASK))
 /***************************************************************************//**
  * @brief
  *   Send the output of a PRS channel to a GPIO pin.

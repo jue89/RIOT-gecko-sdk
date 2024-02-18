@@ -2,8 +2,8 @@
  * @brief RAIL Configuration
  * @details
  *   WARNING: Auto-Generated Radio Config Header  -  DO NOT EDIT
- *   Radio Configurator Version: 2022.5.2
- *   RAIL Adapter Version: 2.4.19
+ *   Radio Configurator Version: 2304.2.1
+ *   RAIL Adapter Version: 2.4.32
  *   RAIL Compatibility: 2.x
  *******************************************************************************
  * # License
@@ -38,19 +38,14 @@
 #include <stdint.h>
 #include "rail_types.h"
 
-#define SL_ACCELERATION_BUFFER slAccelerationBuffer
-extern uint32_t slAccelerationBuffer[];
-// NOTE: This buffer is to be used exclusively by hardware
-extern uint8_t convDecodeBuffer[];
-
 extern const uint32_t sl_rail_ble_phy_1Mbps_viterbi_39MHz_modemConfigBase[];
 
-extern const uint32_t sl_rail_ble_phy_1Mbps_viterbi_39MHz_modemConfig[];
-extern const uint32_t sl_rail_ble_phy_2Mbps_viterbi_39MHz_0_34_modemConfig[];
+extern const uint32_t sl_rail_ble_phy_1Mbps_viterbi_39MHz_0_37_modemConfig[];
+extern const uint32_t sl_rail_ble_phy_2Mbps_viterbi_39MHz_0_37_modemConfig[];
 extern const uint32_t sl_rail_ble_phy_2Mbps_aox_39MHz_0_34_modemConfig[];
-extern const uint32_t sl_rail_ble_phy_125kbps_39MHz_modemConfig[];
-extern const uint32_t sl_rail_ble_phy_500kbps_39MHz_modemConfig[];
-extern const uint32_t ble_LR_DSA_1Mb_modemConfig[];
+extern const uint32_t sl_rail_ble_phy_125kbps_39MHz_0_37_modemConfig[];
+extern const uint32_t sl_rail_ble_phy_500kbps_39MHz_0_37_modemConfig[];
+extern const uint32_t sl_rail_ble_phy_simulscan_39MHz_0_37_modemConfig[];
 
 #define RAIL0_SL_RAIL_BLE_PHY_1MBPS_VITERBI_39MHZ_PHY_BLUETOOTH_1M_AOX_PROD
 #define RAIL0_SL_RAIL_BLE_PHY_1MBPS_VITERBI_39MHZ_PROFILE_BASE

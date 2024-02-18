@@ -38,6 +38,23 @@
  ******************************************************************************/
 
 /****************************************************************************************************//**
+ *                                               SL_DEF_BIT()
+ *
+ * @brief    Create bit mask with single, specified bit set.
+ *
+ * @param    bit     Bit number of bit to set.
+ *
+ * @return   Bit mask with single, specified bit set.
+ *
+ * @note     (1) 'bit' SHOULD be a non-negative integer.
+ *
+ * @note     (2) 'bit' values that overflow the target CPU &/or compiler environment (e.g. negative
+ *               or greater-than-CPU-data-size values) MAY generate compiler warnings &/or errors.
+ *******************************************************************************************************/
+
+#define  SL_DEF_BIT(bit)            (1u << (bit))
+
+/****************************************************************************************************//**
  *                                               SL_SET_BIT()
  *
  * @brief    Set specified bit(s) in a value.
@@ -80,7 +97,7 @@
  *
  * @param    mask    Mask of bits to check if set.
  *
- * @return   true, if ALL specified bit(s) are     set in value.
+ * @return   true,  if ALL specified bit(s) are set in value.
  *
  *           false, if ALL specified bit(s) are NOT set in value.
  *
@@ -100,7 +117,7 @@
  *
  * @param    mask    Mask of bits to check if clear.
  *
- * @return   true, if ALL specified bit(s) are     clear in value.
+ * @return   true,  if ALL specified bit(s) are clear in value.
  *
  *           false, if ALL specified bit(s) are NOT clear in value.
  *
@@ -119,7 +136,7 @@
  *
  * @param    mask    Mask of bits to check if set (see Note #2).
  *
- * @return   true, if ANY specified bit(s) are     set in value.
+ * @return   true,  if ANY specified bit(s) are set in value.
  *
  *           false, if ALL specified bit(s) are NOT set in value.
  *
@@ -139,7 +156,7 @@
  *
  * @param    mask    Mask of bits to check if clear (see Note #2).
  *
- * @return   true, if ANY specified bit(s) are     clear in value.
+ * @return   true,   if ANY specified bit(s) are clear in value.
  *
  *           false,  if ALL specified bit(s) are NOT clear in value.
  *
@@ -149,6 +166,19 @@
  *******************************************************************************************************/
 
 #define  SL_IS_ANY_BIT_CLEAR(val, mask)  ((((val) & (mask)) == (mask))  ? (false) : (true))
+
+/****************************************************************************************************//**
+ *                                            SL_MATH_IS_PWR2()
+ *
+ * @brief    Determine if a value is a power of 2.
+ *
+ * @param    val     Value.
+ *
+ * @return   true,  'val' is a power of 2.
+ *           false, 'val' is not a power of 2.
+ *******************************************************************************************************/
+
+#define  SL_MATH_IS_PWR2(val)   ((((val) != 0u) && (((val) & ((val) - 1u)) == 0u)) ? true : false)
 
 /*******************************************************************************
  ******************************   DEFINES   ************************************

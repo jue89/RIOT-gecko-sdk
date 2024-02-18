@@ -27,14 +27,18 @@
  * 3. This notice may not be removed or altered from any source distribution.
  *
  ******************************************************************************/
-#include "em_device.h"
+
+#include "em_se.h"
+
+#if defined(SLI_EM_SE_HOST) || defined(SEMAILBOX_PRESENT) || defined(CRYPTOACC_PRESENT)
 
 #if defined(SEMAILBOX_PRESENT) || defined(CRYPTOACC_PRESENT)
 
-#include "em_se.h"
 #include "em_core.h"
 #include "sl_assert.h"
 #include "em_system.h"
+
+#endif
 
 /***************************************************************************//**
  * @addtogroup se
@@ -54,6 +58,14 @@
 
 #if defined(CRYPTOACC_PRESENT)
 
+/// Signal that OTP version is incorporated into the status field of the output
+#define SE_VSE_REPLY_STATUS_OTP_VERSION_SET (1 << 21)
+/// Mask defining the region of the status field that contains the OTP version
+/// number.
+#define SE_VSE_REPLY_STATUS_OTP_VERSION_MASK (0xFF000000UL)
+/// Shift to insert a number into the otp version part of the status field
+#define SE_VSE_REPLY_STATUS_OTP_VERSION_SHIFT (24)
+
 /* Size of VSE Mailbox instance.
    There are two instances, input and output. */
 #define ROOT_MAILBOX_SIZE  (512UL)
@@ -65,7 +77,9 @@
 #define ROOT_MAILBOX_INPUT_S_BASE  (ROOT_MAILBOX_OUTPUT_S_BASE - ROOT_MAILBOX_SIZE)
 
 // SL_TRUSTZONE_PERIPHERAL_AHBRADIO_S is defined in sl_trustzone_secure_config.h
-#if ((defined(SL_TRUSTZONE_SECURE) && !defined(SL_TRUSTZONE_PERIPHERAL_AHBRADIO_S)) || SL_TRUSTZONE_PERIPHERAL_AHBRADIO_S)
+#if ((defined(SL_TRUSTZONE_SECURE) && !defined(SL_TRUSTZONE_PERIPHERAL_AHBRADIO_S)) \
+  || (defined(SL_TRUSTZONE_PERIPHERAL_AHBRADIO_S) && SL_TRUSTZONE_PERIPHERAL_AHBRADIO_S))
+
 #define RDMEM_FRCRAM_MEM_BASE RDMEM_FRCRAM_S_MEM_BASE
 
 #define ROOT_MAILBOX_OUTPUT_BASE SYSCFG->ROOTDATA1;
@@ -241,6 +255,7 @@ void SE_addParameter(SE_Command_t *command, uint32_t parameter)
   command->num_parameters += 1;
 }
 
+#if !defined(SLI_EM_SE_HOST)
 /***************************************************************************//**
  * @brief
  *   Execute the passed command
@@ -357,8 +372,9 @@ void SE_executeCommand(SE_Command_t *command)
 #endif // #if defined(SEMAILBOX_PRESENT)
 }
 
-#if defined(CRYPTOACC_PRESENT)
+#endif // #if !defined(SLI_EM_SE_HOST)
 
+#if defined(CRYPTOACC_PRESENT)
 /***************************************************************************//**
  * @brief
  *   Check whether the VSE Output Mailbox is valid.
@@ -500,6 +516,50 @@ SE_Response_t SE_getConfigStatusBits(uint32_t *cfgStatus)
 
   // Return the configuration status bits
   *cfgStatus = rootOutMb->status & ROOT_MB_OUTPUT_STATUS_CONFIG_BITS_MASK;
+
+  return SE_RESPONSE_OK;
+}
+
+/***************************************************************************//**
+ * @brief
+ *  Get the version number of the OTP from the status field of the output
+ *  mailbox
+ * @details
+ *  This function checks if the OTP version number flag is set in the output
+ *  mailbox. If it is, the version number is writen to @ref otpVersion pointer
+ *  location. If not, it returns error response.
+ *
+ * @param[out] otpVersion
+ *  Pointer to location to copy OTP version number into.
+ * @return
+ *  One of the SE_RESPONSE return codes.
+ * @retval SE_RESPONSE_OK when the command was executed successfully
+ ******************************************************************************/
+SE_Response_t SE_getOTPVersion(uint32_t *otpVersion)
+{
+  bool sysCfgClkWasEnabled = ((CMU->CLKEN0 & CMU_CLKEN0_SYSCFG) != 0);
+  CMU->CLKEN0_SET = CMU_CLKEN0_SYSCFG;
+  root_OutputMailbox_t *rootOutMb = (root_OutputMailbox_t *) ROOT_MAILBOX_OUTPUT_BASE;
+  if (!sysCfgClkWasEnabled) {
+    CMU->CLKEN0_CLR = CMU_CLKEN0_SYSCFG;
+  }
+
+  if (otpVersion == NULL) {
+    return SE_RESPONSE_INVALID_PARAMETER;
+  }
+
+  // First verify that the response is ok.
+  if (!rootIsOutputMailboxValid()) {
+    return SE_RESPONSE_MAILBOX_INVALID;
+  }
+
+  bool isOTPVersionSet = rootOutMb->status & SE_VSE_REPLY_STATUS_OTP_VERSION_SET;
+  if (isOTPVersionSet) {
+    // Return the OTP version from the status field.
+    *otpVersion = (rootOutMb->status & SE_VSE_REPLY_STATUS_OTP_VERSION_MASK) >> SE_VSE_REPLY_STATUS_OTP_VERSION_SHIFT;
+  } else {
+    return SE_RESPONSE_INVALID_COMMAND;
+  }
 
   return SE_RESPONSE_OK;
 }
@@ -700,6 +760,7 @@ SE_Response_t SE_ackCommand(SE_Command_t *command)
 *  manager.
 *******************************************************************************/
 
+#if !defined(SLI_EM_SE_HOST)
 /***************************************************************************//**
  * @brief
  *
@@ -741,7 +802,7 @@ SE_Response_t SE_ackCommand(SE_Command_t *command)
  ******************************************************************************/
 SE_Response_t SE_initPubkey(uint32_t key_type, void *pubkey, uint32_t numBytes, bool signature)
 {
-  uint32_t commandWord;
+  uint32_t commandWord = SE_COMMAND_INIT_PUBKEY;
   SE_Response_t res = SE_RESPONSE_INVALID_COMMAND;
 
   EFM_ASSERT((key_type == SE_KEY_TYPE_BOOT)
@@ -762,7 +823,6 @@ SE_Response_t SE_initPubkey(uint32_t key_type, void *pubkey, uint32_t numBytes, 
     (signature) ? SE_COMMAND_INIT_PUBKEY_SIGNATURE : SE_COMMAND_INIT_PUBKEY;
 #elif defined(CRYPTOACC_PRESENT)
   (void)signature;
-  commandWord = SE_COMMAND_INIT_PUBKEY;
 #endif
   SE_Command_t command = SE_COMMAND_DEFAULT(commandWord | key_type);
 
@@ -821,9 +881,18 @@ SE_Response_t SE_initOTP(SE_OTPInit_t *otp_init)
 
 #if defined(SEMAILBOX_PRESENT)
     uint8_t pubkey[64];
-    res = SE_readPubkey(SE_KEY_TYPE_BOOT, &pubkey, 64, false);
-    if (res != SE_RESPONSE_OK) {
-      return SE_RESPONSE_ABORT;
+    {
+      EFM_ASSERT(!((size_t)pubkey & 3U));
+      // SE command structures
+      SE_Command_t commandPubkeyRead = SE_COMMAND_DEFAULT(SE_COMMAND_READ_PUBKEY | SE_KEY_TYPE_BOOT);
+      SE_DataTransfer_t pubkeyData = SE_DATATRANSFER_DEFAULT(pubkey, sizeof(pubkey));
+      SE_addDataOutput(&commandPubkeyRead, &pubkeyData);
+      SE_executeCommand(&commandPubkeyRead);
+      res = SE_readCommandResponse();
+      if (res != SE_RESPONSE_OK) {
+        return SE_RESPONSE_ABORT;
+      }
+      res = SE_RESPONSE_INVALID_COMMAND;
     }
 #endif
   }
@@ -893,6 +962,9 @@ SE_Response_t SE_initOTP(SE_OTPInit_t *otp_init)
   SE_addDataInput(&command, &mcuSettingsFlagsData);
 
   SE_executeCommand(&command);
+#else
+  (void)command;
+  (void)parameters;
 #endif
 
   return res;
@@ -1292,6 +1364,7 @@ SE_Response_t SE_deviceEraseDisable(void)
 }
 
 #endif // #if defined(SEMAILBOX_PRESENT)
+#endif // #if !defined(SLI_EM_SE_HOST)
 
 /** @} (end addtogroup deprecated_se) */
 /** @} (end addtogroup se) */

@@ -37,13 +37,13 @@
 
 #include <math.h>
 
+static const RAIL_HFXOThermistorConfig_t hfxoThermistorConfig = {
+  .port = GPIO_THMSW_EN_PORT,
+  .pin = GPIO_THMSW_EN_PIN
+};
+
 RAIL_Status_t sl_rail_util_thermistor_init(void)
 {
-  const RAIL_HFXOThermistorConfig_t hfxoThermistorConfig = {
-    .port = GPIO_THMSW_EN_PORT,
-    .pin = GPIO_THMSW_EN_PIN
-  };
-
   return RAIL_ConfigHFXOThermistor(RAIL_EFR32_HANDLE, &hfxoThermistorConfig);
 }
 
@@ -59,9 +59,13 @@ RAIL_Status_t RAIL_ConvertThermistorImpedance(RAIL_Handle_t railHandle,
 {
   (void) railHandle;
   // T = 4200 / (log(Rtherm/100000) + 4200/(273.15+25)) - 273.15
-  double impedanceLn = log((double)(thermistorImpedance) / 100000U);
-  // Multiply by 8 to convert in eighth of Celsius degrees
-  *thermistorTemperatureC = (int16_t) ((4200.0 / (impedanceLn + 4200.0 / (273.15 + 25U)) - 273.15) * 8U);
+  double logParam = (double)(thermistorImpedance) / 100000.0;
+  if (logParam <= 0.0) {
+    return RAIL_STATUS_INVALID_PARAMETER;
+  }
+  double impedanceLn = log(logParam);
+  // Multiply by 8 to convert to eighth of Celsius degrees
+  *thermistorTemperatureC = (int16_t) round((4200.0 / (impedanceLn + 4200.0 / (273.15 + 25.0)) - 273.15) * 8.0);
   return RAIL_STATUS_NO_ERROR;
 }
 
@@ -76,11 +80,11 @@ RAIL_Status_t RAIL_ComputeHFXOPPMError(RAIL_Handle_t railHandle,
   // Equation is:
   // f(T) = 1.05*10^-4(T-T0)^3 + 1.0*10^-4(T-T0)^2 - 0.74(T-T0) - 0.35, Reference to 30℃
   // Cache T-T0
-  double deltaRefTempC = crystalTemperatureC - 30;
-  *crystalPPMError = (int8_t) (1.05 * 0.0001 * pow(deltaRefTempC, 3)
-                               + 0.0001 * pow(deltaRefTempC, 2)
-                               - 0.74 * deltaRefTempC
-                               - 0.35);
+  double deltaRefTempC = (double)crystalTemperatureC - 30.0;
+  *crystalPPMError = (int8_t) round(1.05 * 0.0001 * pow(deltaRefTempC, 3.0)
+                                    + 0.0001 * pow(deltaRefTempC, 2.0)
+                                    - 0.74 * deltaRefTempC
+                                    - 0.35);
   return RAIL_STATUS_NO_ERROR;
 }
 

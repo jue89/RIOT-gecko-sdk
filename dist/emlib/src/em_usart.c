@@ -139,9 +139,9 @@
   #endif
 #endif
 
-#if (UART_COUNT == 1) && !defined(_UART_IPVERSION_MASK)
+#if defined(UART_COUNT) && (UART_COUNT == 1) && !defined(_UART_IPVERSION_MASK)
   #define UART_REF_VALID(ref)    ((ref) == UART0)
-#elif (UART_COUNT == 2) && !defined(_UART_IPVERSION_MASK)
+#elif defined(UART_COUNT) && (UART_COUNT == 2) && !defined(_UART_IPVERSION_MASK)
   #define UART_REF_VALID(ref)    (((ref) == UART0) || ((ref) == UART1))
 #else
   #define UART_REF_VALID(ref)    (0)

@@ -39,6 +39,16 @@
 #include "em_core.h"
 #include "em_system.h"
 #include "em_ramfunc.h"
+
+#if defined(SL_CATALOG_METRIC_EM23_WAKE_PRESENT)
+#include "sli_metric_em23_wake.h"
+#include "sli_metric_em23_wake_config.h"
+#endif
+
+#if defined(SL_CATALOG_METRIC_EM4_WAKE_PRESENT)
+#include "sli_metric_em4_wake.h"
+#endif
+
 #if defined(SYSCFG_PRESENT)
 #include "em_syscfg.h"
 #endif
@@ -210,6 +220,9 @@ static errataFixDcdcHs_TypeDef errataFixDcdcHsState = errataFixDcdcHsInit;
 #elif defined(_SILICON_LABS_32B_SERIES_2_CONFIG_5)
 #define RAM0_BLOCKS           16U
 #define RAM0_BLOCK_SIZE   0x8000U // 32 kB blocks
+#elif defined(_SILICON_LABS_32B_SERIES_2_CONFIG_8)
+#define RAM0_BLOCKS           16U
+#define RAM0_BLOCK_SIZE   0x4000U // 16 kB blocks
 #endif
 
 #if defined(_SILICON_LABS_32B_SERIES_0)
@@ -271,6 +284,11 @@ static errataFixDcdcHs_TypeDef errataFixDcdcHsState = errataFixDcdcHsInit;
 #define DCDC_TRIM_MODES ((uint8_t)dcdcTrimMode_LN + 1)
 #endif
 
+#if defined(EMU_SERIES2_DCDC_BUCK_PRESENT) \
+  || defined(EMU_SERIES2_DCDC_BOOST_PRESENT)
+/* EMU DCDC MODE set timeout. */
+#define EMU_DCDC_MODE_SET_TIMEOUT           1000000
+#endif
 #if defined(_SILICON_LABS_GECKO_INTERNAL_SDID_80)
 #define EMU_TESTLOCK         (*(volatile uint32_t *) (EMU_BASE + 0x190))
 #define EMU_BIASCONF         (*(volatile uint32_t *) (EMU_BASE + 0x164))
@@ -285,6 +303,8 @@ static errataFixDcdcHs_TypeDef errataFixDcdcHsState = errataFixDcdcHsInit;
  */
 #define EMU_TEMPCO_CONST (0.273f)
 #endif
+
+#define EMU_EM4_ENTRY_WAIT_LOOPS 200
 
 /*******************************************************************************
  ***************************  LOCAL VARIABLES   ********************************
@@ -331,10 +351,14 @@ static void __attribute__ ((noinline)) ramWFI(void)
 
 #else
   __WFI();                      // Enter EM2 or EM3
+#if defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
   *(volatile uint32_t*)4;       // Clear faulty read data after wakeup
+#if defined(__GNUC__)
 #pragma GCC diagnostic pop
+#endif
 #endif
 }
 SL_RAMFUNC_DEFINITION_END
@@ -452,8 +476,36 @@ static void emState(emState_TypeDef action)
     }
 #endif
 
-    if (hfClock != cmuSelect_HFRCO) {
-      CMU_ClockSelectSet(cmuClock_HF, hfClock);
+    switch (hfClock) {
+      case cmuSelect_LFXO:
+        CMU_CLOCK_SELECT_SET(HF, LFXO);
+        break;
+      case cmuSelect_LFRCO:
+        CMU_CLOCK_SELECT_SET(HF, LFRCO);
+        break;
+      case cmuSelect_HFXO:
+        CMU_CLOCK_SELECT_SET(HF, HFXO);
+        break;
+#if defined(CMU_CMD_HFCLKSEL_USHFRCODIV2)
+      case cmuSelect_USHFRCODIV2:
+        CMU_CLOCK_SELECT_SET(HF, USHFRCODIV2);
+        break;
+#endif
+#if defined(CMU_HFCLKSTATUS_SELECTED_HFRCODIV2)
+      case cmuSelect_HFRCODIV2:
+        CMU_CLOCK_SELECT_SET(HF, HFRCODIV2);
+        break;
+#endif
+#if defined(CMU_HFCLKSTATUS_SELECTED_CLKIN0)
+      case cmuSelect_CLKIN0:
+        CMU_CLOCK_SELECT_SET(HF, CLKIN0);
+        break;
+#endif
+#if defined(CMU_HFCLKSTATUS_SELECTED_USHFRCO)
+      case cmuSelect_USHFRCO:
+        CMU_CLOCK_SELECT_SET(HF, USHFRCO);
+        break;
+#endif
     }
 
 #if defined(_CMU_OSCENCMD_MASK)
@@ -640,13 +692,28 @@ static void vScaleAfterWakeup(void)
 }
 #endif
 
-#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2)
+#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2) || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_7)
 typedef enum {
   dpllState_Save,         /* Save DPLL state. */
   dpllState_Restore,      /* Restore DPLL.    */
 } dpllState_TypeDef;
 
-/* Save or restore and relock DPLL. */
+/***************************************************************************//**
+ * @brief
+ *   Save or restore DPLL state.
+ *
+ * @param[in] action
+ *    Value to indicate saving DPLL state or restoring its state.
+ *
+ * @note
+ *   The function is used in EMU_Save() and EMU_Restore() to handle the
+ *   DPLL state before entering EM2 or EM3 and after exiting EM2 or EM3.
+ *   The function is required for the EFR32xG22 and EFR32xG27 families.
+ *   On those families devices, the DPLL is disabled automatically when
+ *   entering EM2, EM3. But exiting EM2, EM3 won't re-enable automatically
+ *   the DPLL. Hence, the software needs to re-enable the DPLL upon EM2/3
+ *   exit.
+ ******************************************************************************/
 static void dpllState(dpllState_TypeDef action)
 {
   CMU_ClkDiv_TypeDef div;
@@ -843,6 +910,11 @@ SL_WEAK void EMU_EFPEM23PostsleepHook(void)
  * @note
  *   If ERRATA_FIX_EMU_E110_ENABLE is active, the core's SLEEPONEXIT feature
  *   can not be used.
+ * @note
+ *   This function is incompatible with the Power Manager module. When the
+ *   Power Manager module is present, it must be the one deciding at which
+ *   EM level the device sleeps to ensure the application properly works. Using
+ *   both at the same time could lead to undefined behavior in the application.
  * @par
  *   If HFXO is re-enabled by this function, and NOT used to clock the core,
  *   this function will not wait for HFXO to stabilize. This must be considered
@@ -883,6 +955,10 @@ SL_WEAK void EMU_EFPEM23PostsleepHook(void)
  ******************************************************************************/
 void EMU_EnterEM2(bool restore)
 {
+#if defined(SLI_METRIC_EM2_HOOK)
+  sli_metric_em23_wake_init(SLI_INIT_EM2_WAKE);
+#endif
+
 #if defined(ERRATA_FIX_EMU_E107_ENABLE)
   bool errataFixEmuE107En;
   uint32_t nonWicIntEn[2];
@@ -892,7 +968,7 @@ void EMU_EnterEM2(bool restore)
   bool errataFixEmuE110En;
 #endif
 
-#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2)
+#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2) || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_7)
   if (restore) {
     dpllState(dpllState_Save);
   }
@@ -991,7 +1067,7 @@ void EMU_EnterEM2(bool restore)
 #endif
 #endif
 
-#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2)
+#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2) || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_7)
   if (restore) {
     dpllState(dpllState_Restore);
   }
@@ -1033,6 +1109,11 @@ void EMU_EnterEM2(bool restore)
  * @note
  *   If ERRATA_FIX_EMU_E110_ENABLE is active, the core's SLEEPONEXIT feature
  *   can't be used.
+ * @note
+ *   This function is incompatible with the Power Manager module. When the
+ *   Power Manager module is present, it must be the one deciding at which
+ *   EM level the device sleeps to ensure the application properly works. Using
+ *   both at the same time could lead to undefined behavior in the application.
  * @par
  *   If HFXO/LFXO/LFRCO are re-enabled by this function, and NOT used to clock
  *   the core, this function will not wait for those oscillators to stabilize.
@@ -1061,6 +1142,10 @@ void EMU_EnterEM2(bool restore)
  ******************************************************************************/
 void EMU_EnterEM3(bool restore)
 {
+#if defined(SLI_METRIC_EM3_HOOK)
+  sli_metric_em23_wake_init(SLI_INIT_EM3_WAKE);
+#endif
+
 #if defined(ERRATA_FIX_EMU_E107_ENABLE)
   bool errataFixEmuE107En;
   uint32_t nonWicIntEn[2];
@@ -1070,7 +1155,7 @@ void EMU_EnterEM3(bool restore)
   bool errataFixEmuE110En;
 #endif
 
-#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2)
+#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2) || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_7)
   if (restore) {
     dpllState(dpllState_Save);
   }
@@ -1181,7 +1266,7 @@ void EMU_EnterEM3(bool restore)
 #endif
 #endif
 
-#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2)
+#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2) || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_7)
   if (restore) {
     dpllState(dpllState_Restore);
   }
@@ -1210,7 +1295,7 @@ void EMU_Save(void)
 #if (_SILICON_LABS_32B_SERIES < 2)
   emState(emState_Save);
 #endif
-#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2)
+#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2) || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_7)
   dpllState(dpllState_Save);
 #endif
 }
@@ -1229,7 +1314,7 @@ void EMU_Restore(void)
 #if (_SILICON_LABS_32B_SERIES < 2)
   emState(emState_Restore);
 #endif
-#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2)
+#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2) || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_7)
   dpllState(dpllState_Restore);
 #endif
 }
@@ -1337,6 +1422,9 @@ SL_WEAK void EMU_EFPEM4PresleepHook(void)
  ******************************************************************************/
 void EMU_EnterEM4(void)
 {
+#if defined(SL_CATALOG_METRIC_EM4_WAKE_PRESENT)
+  sli_metric_em4_wake_init();
+#endif
   int i;
 
 #if defined(_EMU_EM4CTRL_EM4ENTRY_SHIFT)
@@ -1367,11 +1455,21 @@ void EMU_EnterEM4(void)
   }
 #endif
 
-#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG) && (_SILICON_LABS_32B_SERIES_2_CONFIG >= 2)
+#if defined(_DCDC_IF_EM4ERR_MASK)
+  /* Make sure DCDC Mode is not modified, from this point forward,
+   * by another code section. */
+  CORE_DECLARE_IRQ_STATE;
+  CORE_ENTER_CRITICAL();
+
   /* Workaround for bug that may cause a Hard Fault on EM4 entry */
-  CMU_ClockSelectSet(cmuClock_SYSCLK, cmuSelect_FSRCO);
-  /* Switch from DCDC regulation mode to bypass mode before entering EM4. */
+  CMU_CLOCK_SELECT_SET(SYSCLK, FSRCO);
+  /* The buck DC-DC is available in all energy modes except for EM4.
+   * The DC-DC converter must first be turned off and switched over to bypass mode. */
+#if defined(EMU_SERIES1_DCDC_BUCK_PRESENT)   \
+  || (defined(EMU_SERIES2_DCDC_BUCK_PRESENT) \
+  || defined(EMU_SERIES2_DCDC_BOOST_PRESENT))
   EMU_DCDCModeSet(emuDcdcMode_Bypass);
+#endif
 #endif
 
 #if defined(_EMU_EM4CTRL_MASK) && defined(ERRATA_FIX_EMU_E208_ENABLE)
@@ -1434,6 +1532,33 @@ void EMU_EnterEM4(void)
   }
   EMU->CTRL = em4seq2;
 #endif
+
+#if defined(_DCDC_IF_EM4ERR_MASK)
+  EFM_ASSERT((DCDC->IF & _DCDC_IF_EM4ERR_MASK) == 0);
+  CORE_EXIT_CRITICAL();
+#endif
+}
+
+/***************************************************************************//**
+ * @brief
+ *   Enter energy mode 4 (EM4).
+ *
+ * @details
+ *   This function waits after the EM4 entry request to make sure the CPU
+ *   is properly shutdown or the EM4 entry failed.
+ *
+ * @note
+ *   Only a power on reset or external reset pin can wake the device from EM4.
+ ******************************************************************************/
+void EMU_EnterEM4Wait(void)
+{
+  EMU_EnterEM4();
+
+  // The EM4 entry waiting loop should take 4 cycles by loop minimally (Compiler dependent).
+  // We would then wait for (EMU_EM4_ENTRY_WAIT_LOOPS * 4) clock cycles.
+  for (uint16_t i = 0; i < EMU_EM4_ENTRY_WAIT_LOOPS; i++) {
+    __NOP();
+  }
 }
 
 #if defined(_EMU_EM4CTRL_MASK)
@@ -1558,16 +1683,20 @@ void EMU_RamPowerDown(uint32_t start, uint32_t end)
     mask |= ADDRESS_NOT_IN_BLOCK(start, 0x20004000UL) << 2; // Block 3, 8 kB
     mask |= ADDRESS_NOT_IN_BLOCK(start, 0x20006000UL) << 3; // Block 4, 7 kB
 #elif defined(_SILICON_LABS_32B_SERIES_2_CONFIG_2)
-    // Lynx has 2 blocks
-    mask |= ADDRESS_NOT_IN_BLOCK(start, 0x20006000UL) << 0; // Block 0, 24 kB
-    mask |= ADDRESS_NOT_IN_BLOCK(start, 0x20008000UL) << 1; // Block 1, 8 kB
+    // Lynx has 2 blocks. We do no shut off block 0 because we dont want to disable all RAM0
+    mask |= ADDRESS_NOT_IN_BLOCK(start, 0x20006000UL) << 1; // Block 1, 8 kB
 #elif defined(_SILICON_LABS_32B_SERIES_2_CONFIG_7)
-    // Leopard has 3 blocks
-    mask |= ADDRESS_NOT_IN_BLOCK(start, 0x20006000UL) << 0; // Block 0, 24 kB
-    mask |= ADDRESS_NOT_IN_BLOCK(start, 0x20008000UL) << 1; // Block 1, 8 kB
-    mask |= ADDRESS_NOT_IN_BLOCK(start, 0x20010000UL) << 2; // Block 2, 32 kB
+    // Leopard has 3 blocks. We do no shut off block 0 because we dont want to disable all RAM0
+    mask |= ADDRESS_NOT_IN_BLOCK(start, 0x20006000UL) << 1; // Block 1, 8 kB
+    mask |= ADDRESS_NOT_IN_BLOCK(start, 0x20008000UL) << 2; // Block 2, 32 kB
+#elif defined(_SILICON_LABS_32B_SERIES_2_CONFIG_8)
+    // These platforms have equally-sized RAM blocks and block 0 can be powered down but should not.
+    // This condition happens when the block 0 disable bit flag is available in the retention control register.
+    for (unsigned i = 1; i < RAM0_BLOCKS; i++) {
+      mask |= ADDRESS_NOT_IN_BLOCK(start, RAM_MEM_BASE + (i * RAM0_BLOCK_SIZE)) << (i);
+    }
 #elif defined(RAM0_BLOCKS)
-    // These platforms have equally-sized RAM blocks.
+    // These platforms have equally-sized RAM blocks and block 0 cannot be powered down.
     for (unsigned i = 1; i < RAM0_BLOCKS; i++) {
       mask |= ADDRESS_NOT_IN_BLOCK(start, RAM_MEM_BASE + (i * RAM0_BLOCK_SIZE)) << (i - 1U);
     }
@@ -3191,9 +3320,9 @@ bool EMU_DCDCBoostInit(const EMU_DCDCBoostInit_TypeDef *dcdcBoostInit)
 
 /***************************************************************************//**
  * @brief
- *   Set EMO1 mode Boost Peak Current setting.
+ *   Set EM01 mode Boost Peak Current setting.
  *
- * @param[in] peakCurrentEM01
+ * @param[in] boostPeakCurrentEM01
  *  Boost Peak load current coefficient in EM01 mode.
  ******************************************************************************/
 void EMU_EM01BoostPeakCurrentSet(const EMU_DcdcBoostEM01PeakCurrent_TypeDef boostPeakCurrentEM01)
@@ -3232,15 +3361,15 @@ void EMU_EM01BoostPeakCurrentSet(const EMU_DcdcBoostEM01PeakCurrent_TypeDef boos
  *   Enable/disable Boost External Shutdown Mode.
  *
  * @param[in] enable
- *   True to enable the Boost regulator to go into a very low power shutdown
- *   state when the logic level on BOOST_EN is low.
+ *   The boost DC-DC converter can be activated or deactivated
+ *   from a dedicated BOOST_EN pin on the device if enable is true.
  ******************************************************************************/
 void EMU_BoostExternalShutdownEnable(bool enable)
 {
   if (enable) {
-    EMU->BOOSTCTRL_SET = EMU_BOOSTCTRL_BOOSTENCTRL;
-  } else {
     EMU->BOOSTCTRL_CLR = EMU_BOOSTCTRL_BOOSTENCTRL;
+  } else {
+    EMU->BOOSTCTRL_SET = EMU_BOOSTCTRL_BOOSTENCTRL;
   }
 }
 #endif /* EMU_SERIES2_DCDC_BOOST_PRESENT */
@@ -3267,12 +3396,19 @@ SL_WEAK void EMU_DCDCUpdatedHook(void)
  *
  * @param[in] dcdcMode
  *   DCDC mode.
+ * @return
+ *   Returns the status of the DCDC mode set operation.
+ * @verbatim
+ *   SL_STATUS_OK - Operation completed successfully.
+ *   SL_STATUS_TIMEOUT - Operation EMU DCDC set mode timeout.
+ * @endverbatim
  ******************************************************************************/
-void EMU_DCDCModeSet(EMU_DcdcMode_TypeDef dcdcMode)
+sl_status_t EMU_DCDCModeSet(EMU_DcdcMode_TypeDef dcdcMode)
 {
   bool dcdcLocked;
   uint32_t currentDcdcMode;
-
+  sl_status_t error = SL_STATUS_OK;
+  uint32_t timeout = 0;
   CMU->CLKEN0_SET = CMU_CLKEN0_DCDC;
 #if defined(_DCDC_EN_EN_MASK)
   DCDC->EN_SET = DCDC_EN_EN;
@@ -3293,22 +3429,35 @@ void EMU_DCDCModeSet(EMU_DcdcMode_TypeDef dcdcMode)
     if (currentDcdcMode != emuDcdcMode_Bypass) {
       /* Switch to BYPASS mode if it is not the current mode */
       DCDC->CTRL_CLR = DCDC_CTRL_MODE;
-      while ((DCDC->STATUS & DCDC_STATUS_BYPSW) == 0U) {
+      while (((DCDC->STATUS & DCDC_STATUS_BYPSW) == 0U) && (timeout < EMU_DCDC_MODE_SET_TIMEOUT)) {
         /* Wait for BYPASS switch enable. */
+        timeout++;
+      }
+      if (timeout >= EMU_DCDC_MODE_SET_TIMEOUT) {
+        error = SL_STATUS_TIMEOUT;
       }
     }
 #if defined(_DCDC_EN_EN_MASK)
     DCDC->EN_CLR = DCDC_EN_EN;
 #endif
   } else {
-    while ((DCDC->STATUS & DCDC_STATUS_VREGIN) != 0U) {
+    while (((DCDC->STATUS & DCDC_STATUS_VREGIN) != 0U) && (timeout < EMU_DCDC_MODE_SET_TIMEOUT)) {
       /* Wait for VREGIN voltage to rise above threshold. */
+      timeout++;
     }
-
-    DCDC->IF_CLR = DCDC_IF_REGULATION;
-    DCDC->CTRL_SET = DCDC_CTRL_MODE;
-    while ((DCDC->IF & DCDC_IF_REGULATION) == 0U) {
-      /* Wait for DCDC to complete it's startup. */
+    if (timeout >= EMU_DCDC_MODE_SET_TIMEOUT) {
+      error = SL_STATUS_TIMEOUT;
+    } else {
+      DCDC->IF_CLR = DCDC_IF_REGULATION;
+      DCDC->CTRL_SET = DCDC_CTRL_MODE;
+      timeout = 0;
+      while (((DCDC->IF & DCDC_IF_REGULATION) == 0U) && (timeout < EMU_DCDC_MODE_SET_TIMEOUT)) {
+        /* Wait for DCDC to complete it's startup. */
+        timeout++;
+      }
+      if (timeout >= EMU_DCDC_MODE_SET_TIMEOUT) {
+        error = SL_STATUS_TIMEOUT;
+      }
     }
   }
 
@@ -3317,6 +3466,7 @@ void EMU_DCDCModeSet(EMU_DcdcMode_TypeDef dcdcMode)
   }
 
   EMU_DCDCUpdatedHook();
+  return error;
 }
 #endif /* EMU_SERIES2_DCDC_BUCK_PRESENT || EMU_SERIES2_DCDC_BOOST_PRESENT */
 

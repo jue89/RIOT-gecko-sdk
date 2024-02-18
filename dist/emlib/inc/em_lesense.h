@@ -48,7 +48,10 @@ extern "C" {
 
 /** Number of decoder states supported by current device. */
 #define LESENSE_NUM_DECODER_STATES   (_LESENSE_DECSTATE_DECSTATE_MASK + 1)
-
+#if defined(_SILICON_LABS_32B_SERIES_2)
+/** Number of ARCs supported by current device. Number of ARCS is the number of states times 2 */
+#define LESENSE_NUM_ARCS   (LESENSE_NUM_DECODER_STATES << 1)
+#endif
 /** Number of LESENSE channels. */
 #define LESENSE_NUM_CHANNELS         16
 
@@ -490,6 +493,41 @@ typedef enum {
    *  the counter threshold, or if the ACMP output is 1. */
   lesenseCompModeGreaterOrEq = LESENSE_CH_EVALCFG_COMP_GE
 } LESENSE_ChCompMode_TypeDef;
+#endif
+
+/** Mode of Storing of Sensor Sample in Result Buffer. */
+#if defined(_SILICON_LABS_32B_SERIES_0)
+typedef enum {
+  /** Nothing will be stored in the result buffer. */
+  lesenseStoreSampleDisable = _LESENSE_CH_EVAL_STRSAMPLE_DEFAULT,
+
+  /** The sensor sample data will be stored in the result buffer. */
+  lesenseStoreSampleData = _LESENSE_CH_EVAL_STRSAMPLE_MASK >> _LESENSE_CH_EVAL_STRSAMPLE_SHIFT
+} LESENSE_StoreSample_TypeDef;
+#elif defined (_SILICON_LABS_32B_SERIES_1)
+typedef enum {
+  /** Nothing will be stored in the result buffer. */
+  lesenseStoreSampleDisable = _LESENSE_CH_EVAL_STRSAMPLE_DISABLE,
+
+  /** The sensor sample data will be stored in the result buffer. */
+  lesenseStoreSampleData = _LESENSE_CH_EVAL_STRSAMPLE_DATA,
+
+  /** The data source (i.e. the channel) will be stored alongside the sensor
+   *  sample data. */
+  lesenseStoreSampleDataSrc = _LESENSE_CH_EVAL_STRSAMPLE_DATASRC
+} LESENSE_StoreSample_TypeDef;
+#else
+typedef enum {
+  /** Nothing will be stored in the result buffer. */
+  lesenseStoreSampleDisable = _LESENSE_CH_EVALCFG_STRSAMPLE_DISABLE,
+
+  /** The sensor sample data will be stored in the result buffer. */
+  lesenseStoreSampleData = _LESENSE_CH_EVALCFG_STRSAMPLE_DATA,
+
+  /** The data source (i.e. the channel) will be stored alongside the sensor
+   *  sample data. */
+  lesenseStoreSampleDataSrc = _LESENSE_CH_EVALCFG_STRSAMPLE_DATASRC
+} LESENSE_StoreSample_TypeDef;
 #endif
 
 /** Sensor evaluation modes. */
@@ -1001,7 +1039,7 @@ typedef struct {
 
   /** Set to store counter value in the RAM (accessible via RESDATA) and make
    *  the comparison result available in the SCANRES register. */
-  bool                          storeCntRes;
+  LESENSE_StoreSample_TypeDef   storeCntRes;
 
   /** Select clock used for the excitation timing. */
   LESENSE_ChClk_TypeDef         exClk;
@@ -1079,7 +1117,7 @@ typedef struct {
     false,                    /* Do not use alternate excitation pins for excitation. */                 \
     false,                    /* Disabled to shift results from this channel to decoder register.     */ \
     false,                    /* Disabled to invert scan result bit. */                                  \
-    false,                    /* Disabled to store counter value in result buffer. */                    \
+    lesenseStoreSampleDisable,/* Disabled to store counter value in result buffer. */                    \
     lesenseClkLF,             /* Use LF clock for excitation timing. */                                  \
     lesenseClkLF,             /* Use LF clock for sample timing. */                                      \
     0x00U,                    /* Excitation time is set to 0(+1) excitation clock cycles. */             \
@@ -1104,7 +1142,7 @@ typedef struct {
     false,                    /* Do not use alternate excitation pins for excitation. */                 \
     false,                    /* Disabled to shift results from this channel to decoder register.     */ \
     false,                    /* Disabled to invert scan result bit. */                                  \
-    false,                    /* Disabled to store counter value in result buffer. */                    \
+    lesenseStoreSampleDisable,/* Disabled to store counter value in result buffer. */                    \
     lesenseClkLF,             /* Use LF clock for excitation timing. */                                  \
     lesenseClkLF,             /* Use LF clock for sample timing. */                                      \
     0x00U,                    /* Excitation time is set to 0(+1) excitation clock cycles. */             \
@@ -1118,27 +1156,27 @@ typedef struct {
     lesenseEvalModeThreshold  /* Evaluation mode has been set to trigger interrupt on threshold. */      \
   }
 #else /* _SILICON_LABS_32B_SERIES_0 */
-#define LESENSE_CH_CONF_DEFAULT                                                                         \
-  {                                                                                                     \
-    false,                   /* Disable scan channel. */                                                \
-    false,                   /* Disable assigned pin on scan channel. */                                \
-    false,                   /* Disable interrupts on channel. */                                       \
-    lesenseChPinExDis,       /* Channel pin is disabled during excitation period. */                    \
-    lesenseChPinIdleDis,     /* Channel pin is disabled during idle period. */                          \
-    false,                   /* Do not use alternate excitation pins for excitation. */                 \
-    false,                   /* Disabled to shift results from this channel to decoder register.     */ \
-    false,                   /* Disabled to invert scan result bit. */                                  \
-    false,                   /* Disabled to store counter value in result buffer. */                    \
-    lesenseClkLF,            /* Use LF clock for excitation timing. */                                  \
-    lesenseClkLF,            /* Use LF clock for sample timing. */                                      \
-    0x00U,                   /* Excitation time is set to 0(+1) excitation clock cycles. */             \
-    0x00U,                   /* Sample delay is set to 0(+1) sample clock cycles. */                    \
-    0x00U,                   /* Measure delay is set to 0 excitation clock cycles.*/                    \
-    0x00U,                   /* ACMP threshold has been set to 0. */                                    \
-    lesenseSampleModeACMP,   /* ACMP output will be used in comparison. */                              \
-    lesenseSetIntNone,       /* No interrupt is generated by the channel. */                            \
-    0x00U,                   /* Counter threshold has bee set to 0x00. */                               \
-    lesenseCompModeLess      /* Compare mode has been set to trigger interrupt on "less". */            \
+#define LESENSE_CH_CONF_DEFAULT                                                                          \
+  {                                                                                                      \
+    false,                    /* Disable scan channel. */                                                \
+    false,                    /* Disable assigned pin on scan channel. */                                \
+    false,                    /* Disable interrupts on channel. */                                       \
+    lesenseChPinExDis,        /* Channel pin is disabled during excitation period. */                    \
+    lesenseChPinIdleDis,      /* Channel pin is disabled during idle period. */                          \
+    false,                    /* Do not use alternate excitation pins for excitation. */                 \
+    false,                    /* Disabled to shift results from this channel to decoder register.     */ \
+    false,                    /* Disabled to invert scan result bit. */                                  \
+    lesenseStoreSampleDisable,/* Disabled to store counter value in result buffer. */                    \
+    lesenseClkLF,             /* Use LF clock for excitation timing. */                                  \
+    lesenseClkLF,             /* Use LF clock for sample timing. */                                      \
+    0x00U,                    /* Excitation time is set to 0(+1) excitation clock cycles. */             \
+    0x00U,                    /* Sample delay is set to 0(+1) sample clock cycles. */                    \
+    0x00U,                    /* Measure delay is set to 0 excitation clock cycles.*/                    \
+    0x00U,                    /* ACMP threshold has been set to 0. */                                    \
+    lesenseSampleModeACMP,    /* ACMP output will be used in comparison. */                              \
+    lesenseSetIntNone,        /* No interrupt is generated by the channel. */                            \
+    0x00U,                    /* Counter threshold has bee set to 0x00. */                               \
+    lesenseCompModeLess       /* Compare mode has been set to trigger interrupt on "less". */            \
   }
 #endif
 
@@ -1369,8 +1407,13 @@ typedef LESENSE_DecStCond_TypeDef LESENSE_DecStDesc_TypeDef;
 
 /** Configuration structure for decoder. */
 typedef struct {
+#if defined(_SILICON_LABS_32B_SERIES_0) || defined(_SILICON_LABS_32B_SERIES_1)
   /** Descriptor of the 16 or 32 decoder states depending on the device. */
   LESENSE_DecStDesc_TypeDef St[LESENSE_NUM_DECODER_STATES];
+#else
+  /** Descriptor of the 64 Arcs on series 2 devices. */
+  LESENSE_DecStDesc_TypeDef St[LESENSE_NUM_ARCS];
+#endif
 } LESENSE_DecStAll_TypeDef;
 
 /** Default configuration for all decoder states. */

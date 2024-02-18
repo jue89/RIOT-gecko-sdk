@@ -86,7 +86,7 @@ extern const RAIL_TxPowerCurvesConfigAlt_t RAIL_TxPowerCurvesDcdc;
  * tx power curves.
  * @return RAIL_Status_t indicating success or an error.
  *
- * @note: This function is deprecated, and will no longer be supported
+ * @deprecated function will no longer be supported
  * for any chips released after EFRXG1X parts. Please use
  * RAIL_InitTxPowerCurvesAlt instead.
  */
@@ -163,6 +163,14 @@ RAIL_TxPowerConfig_t *sl_rail_util_pa_get_tx_power_config_2p4ghz(void);
  *
  */
 RAIL_TxPowerConfig_t *sl_rail_util_pa_get_tx_power_config_subghz(void);
+
+/**
+ * Get a pointer to the TX Power Config OFDM structure.
+ *
+ * @return a pointer to the TX Power Config stucture.
+ *
+ */
+RAIL_TxPowerConfig_t *sl_rail_util_pa_get_tx_power_config_ofdm(void);
 
 /**
  * Provide a channel config change callback capable of configuring the PA

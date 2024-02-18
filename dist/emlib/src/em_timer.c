@@ -52,7 +52,20 @@
 #if defined(_PRS_CONSUMER_TIMER0_CC0_MASK)
 
 /** Map TIMER reference to index of device. */
-#if defined(TIMER7)
+#if defined(TIMER9)
+#define TIMER_DEVICE_ID(timer) ( \
+    (timer) == TIMER0     ? 0    \
+    : (timer) == TIMER1   ? 1    \
+    : (timer) == TIMER2   ? 2    \
+    : (timer) == TIMER3   ? 3    \
+    : (timer) == TIMER4   ? 4    \
+    : (timer) == TIMER5   ? 5    \
+    : (timer) == TIMER6   ? 6    \
+    : (timer) == TIMER7   ? 7    \
+    : (timer) == TIMER8   ? 8    \
+    : (timer) == TIMER9   ? 9    \
+    : -1)
+#elif defined(TIMER7)
 #define TIMER_DEVICE_ID(timer) ( \
     (timer) == TIMER0     ? 0    \
     : (timer) == TIMER1   ? 1    \
@@ -127,12 +140,14 @@ static void timerPrsConfig(TIMER_TypeDef * timer, unsigned int cc, unsigned int 
 {
   int i = TIMER_DEVICE_ID(timer);
   volatile PRS_TIMERn_TypeDef * base = (PRS_TIMERn_TypeDef *) &PRS->CONSUMER_TIMER0_CC0;
-  EFM_ASSERT(i != -1);
+  EFM_ASSERT(i >= 0);
 
-  if (async) {
-    base->TIMER_CONSUMER[i].CONSUMER_CH[cc] = prsCh << _PRS_CONSUMER_TIMER0_CC0_PRSSEL_SHIFT;
-  } else {
-    base->TIMER_CONSUMER[i].CONSUMER_CH[cc] = prsCh << _PRS_CONSUMER_TIMER0_CC0_SPRSSEL_SHIFT;
+  if (i >= 0) {
+    if (async) {
+      base->TIMER_CONSUMER[i].CONSUMER_CH[cc] = prsCh << _PRS_CONSUMER_TIMER0_CC0_PRSSEL_SHIFT;
+    } else {
+      base->TIMER_CONSUMER[i].CONSUMER_CH[cc] = prsCh << _PRS_CONSUMER_TIMER0_CC0_SPRSSEL_SHIFT;
+    }
   }
 }
 #endif
@@ -180,7 +195,9 @@ void TIMER_Init(TIMER_TypeDef *timer, const TIMER_Init_TypeDef *init)
                | (init->quadModeX4       ?   TIMER_CFG_QDM_X4    : 0)
                | (init->oneShot          ?   TIMER_CFG_OSMEN     : 0)
                | (init->sync             ?   TIMER_CFG_SYNC      : 0)
-               | (init->ati              ?   TIMER_CFG_ATI       : 0);
+               | (init->disSyncOut       ?   TIMER_CFG_DISSYNCOUT : 0)
+               | (init->ati              ?   TIMER_CFG_ATI       : 0)
+               | (init->rssCoist         ?   TIMER_CFG_RSSCOIST  : 0);
   timer->EN_SET = TIMER_EN_EN;
 #endif
 
@@ -192,11 +209,7 @@ void TIMER_Init(TIMER_TypeDef *timer, const TIMER_Init_TypeDef *init)
   /* Reset the counter. */
   timer->CNT = _TIMER_CNT_RESETVALUE;
 
-#if defined(_SILICON_LABS_32B_SERIES_2)
-  ctrlRegVal = ((uint32_t)init->fallAction   << _TIMER_CTRL_FALLA_SHIFT)
-               | ((uint32_t)init->riseAction << _TIMER_CTRL_RISEA_SHIFT)
-               | (init->count2x              ?   TIMER_CTRL_X2CNT     : 0);
-#else
+#if defined(_SILICON_LABS_32B_SERIES_0) || defined(_SILICON_LABS_32B_SERIES_1)
   ctrlRegVal = ((uint32_t)init->prescale     << _TIMER_CTRL_PRESC_SHIFT)
                | ((uint32_t)init->clkSel     << _TIMER_CTRL_CLKSEL_SHIFT)
                | ((uint32_t)init->fallAction << _TIMER_CTRL_FALLA_SHIFT)
@@ -206,11 +219,21 @@ void TIMER_Init(TIMER_TypeDef *timer, const TIMER_Init_TypeDef *init)
                | (init->dmaClrAct            ?   TIMER_CTRL_DMACLRACT : 0)
                | (init->quadModeX4           ?   TIMER_CTRL_QDM_X4    : 0)
                | (init->oneShot              ?   TIMER_CTRL_OSMEN     : 0)
-               | (init->sync                 ?   TIMER_CTRL_SYNC      : 0);
-#if defined(TIMER_CTRL_X2CNT) && defined(TIMER_CTRL_ATI)
-  ctrlRegVal |= (init->count2x              ?   TIMER_CTRL_X2CNT     : 0)
-                | (init->ati                ?   TIMER_CTRL_ATI       : 0);
+#if defined(TIMER_CTRL_DISSYNCOUT)
+               | (init->disSyncOut           ?   TIMER_CTRL_DISSYNCOUT : 0)
 #endif
+               | (init->sync                 ?   TIMER_CTRL_SYNC      : 0);
+
+#if defined(TIMER_CTRL_X2CNT) && defined(TIMER_CTRL_ATI) && defined(TIMER_CTRL_RSSCOIST)
+  ctrlRegVal |= (init->count2x              ?   TIMER_CTRL_X2CNT     : 0)
+                | (init->ati                ?   TIMER_CTRL_ATI       : 0)
+                | (init->rssCoist           ?   TIMER_CTRL_RSSCOIST  : 0);
+#endif
+
+#else
+  ctrlRegVal = ((uint32_t)init->fallAction   << _TIMER_CTRL_FALLA_SHIFT)
+               | ((uint32_t)init->riseAction << _TIMER_CTRL_RISEA_SHIFT)
+               | (init->count2x              ?   TIMER_CTRL_X2CNT     : 0);
 #endif
 
   timer->CTRL = ctrlRegVal;

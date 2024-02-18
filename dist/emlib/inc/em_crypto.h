@@ -72,10 +72,11 @@ extern "C" {
  *   the mbedTLS library. Additionally, em_crypto.h implement the AES API of the
  *   em_aes.h (supported by classic EFM32) for backward compatibility. The
  *   following list summarizes the em_crypto.h interface:
- *   @li AES (Advanced Encryption Standard) @ref crypto_aes
- *   @li SHA (Secure Hash Algorithm) @ref crypto_sha
- *   @li Big Integer multiplier @ref crypto_mul
- *   @li Functions for loading data and executing instruction sequences @ref crypto_exec
+ *
+ *   - AES (Advanced Encryption Standard) [AES](/gecko-platform/<docspace-docleaf-version>/platform-emlib-efr32xg1/crypto#aes)
+ *   - SHA (Secure Hash Algorithm) [SHA](/gecko-platform/<docspace-docleaf-version>/platform-emlib-efr32xg1/crypto#sha)
+ *   - Big Integer multiplier [CRYPTO_Mul](/gecko-platform/<docspace-docleaf-version>/platform-emlib-efr32xg1/crypto#crypto-mul)
+ *   - Functions for loading data and executing instruction sequences [Load and Execute Instruction Sequences](/gecko-platform/<docspace-docleaf-version>/platform-emlib-efr32xg1/crypto#load-and-execute-instruction-sequences)
  *
  *   @n @section crypto_aes AES
  *   The AES APIs include support for AES-128 and AES-256 with block cipher
@@ -814,6 +815,25 @@ void CRYPTO_DDataRead(CRYPTO_DDataReg_TypeDef  ddataReg,
 
 /***************************************************************************//**
  * @brief
+ *   Read 256 bits of data from a DDATAX register in the CRYPTO module to an
+ *   unaligned pointer.
+ *
+ * @details
+ *   Read 256 bits from a DDATAX register in the CRYPTO module. The output
+ *   buffer pointer does not have to be word-aligned, but an unaligned pointer
+ *   might incur a performance penalty.
+ *
+ * @param[in]  ddataReg   The 256 bit DDATA register.
+ * @param[out] val        Location where to store the value in memory.
+ *                        Can be unaligned.
+ ******************************************************************************/
+CRYPTO_WARNINGS_NO_CAST_ALIGN
+void CRYPTO_DDataReadUnaligned(CRYPTO_DDataReg_TypeDef ddataReg,
+                               uint8_t * val);
+CRYPTO_WARNINGS_RESET
+
+/***************************************************************************//**
+ * @brief
  *   Write 512 bits of data to a QDATAX register in the CRYPTO module.
  *
  * @details
@@ -826,6 +846,24 @@ void CRYPTO_DDataRead(CRYPTO_DDataReg_TypeDef  ddataReg,
  ******************************************************************************/
 void CRYPTO_QDataWrite(CRYPTO_QDataReg_TypeDef qdataReg,
                        const CRYPTO_QData_TypeDef val);
+
+/***************************************************************************//**
+ * @brief
+ *   Write 512 bits of unaligned data to a QDATAX register in the CRYPTO module.
+ *
+ * @details
+ *   Write 512 bits of unaligned data to a QDATAX register in the CRYPTO module.
+ *   The data pointer does not have to be word-aligned, but an unaligned pointer
+ *   might incur a performance hit.
+ *
+ * @param[in]  qdataReg   The 512 bits QDATA register.
+ * @param[in]  val        Pointer to value to write to the QDATA register.
+ *                        Can be unaligned.
+ ******************************************************************************/
+CRYPTO_WARNINGS_NO_CAST_ALIGN
+void CRYPTO_QDataWriteUnaligned(CRYPTO_QDataReg_TypeDef qdataReg,
+                                const uint8_t * val);
+CRYPTO_WARNINGS_RESET
 
 /***************************************************************************//**
  * @brief
@@ -1349,236 +1387,6 @@ __STATIC_INLINE void CRYPTO_IntSet(CRYPTO_TypeDef *crypto, uint32_t flags)
 {
   crypto->IFS = flags;
 }
-
-/** @cond DO_NOT_INCLUDE_WITH_DOXYGEN */
-/*******************************************************************************
- *****    Static inline wrappers for CRYPTO AES functions to      *****
- *****    preserve backwards compatibility with AES module API functions.  *****
- ******************************************************************************/
-
-/***************************************************************************//**
- * @brief
- *   AES Cipher-block chaining (CBC) cipher mode encryption/decryption,
- *   128 bit key.
- *
- * @deprecated
- *   This function preserves backwards compatibility. Use
- *   @ref CRYPTO_AES_CBC128 instead.
- ******************************************************************************/
-__STATIC_INLINE SL_DEPRECATED_API_SDK_4_1 void AES_CBC128(uint8_t * out,
-                                                          const uint8_t * in,
-                                                          unsigned int len,
-                                                          const uint8_t * key,
-                                                          const uint8_t * iv,
-                                                          bool encrypt)
-{
-  CRYPTO_AES_CBC128(DEFAULT_CRYPTO, out, in, len, key, iv, encrypt);
-}
-
-/***************************************************************************//**
- * @brief
- *   AES Cipher-block chaining (CBC) cipher mode encryption/decryption, 256 bit
- *   key.
- *
- * @deprecated
- *   This function preserves backwards compatibility. Use
- *   @ref CRYPTO_AES_CBC256 instead.
- ******************************************************************************/
-__STATIC_INLINE SL_DEPRECATED_API_SDK_4_1 void AES_CBC256(uint8_t * out,
-                                                          const uint8_t * in,
-                                                          unsigned int len,
-                                                          const uint8_t * key,
-                                                          const uint8_t * iv,
-                                                          bool encrypt)
-{
-  CRYPTO_AES_CBC256(DEFAULT_CRYPTO, out, in, len, key, iv, encrypt);
-}
-
-/***************************************************************************//**
- * @brief
- *   AES Cipher feedback (CFB) cipher mode encryption/decryption, 128 bit key.
- *
- * @deprecated
- *   This function preserves backwards compatibility. Use
- *   @ref CRYPTO_AES_CFB128 instead.
- ******************************************************************************/
-__STATIC_INLINE SL_DEPRECATED_API_SDK_4_1 void AES_CFB128(uint8_t * out,
-                                                          const uint8_t * in,
-                                                          unsigned int len,
-                                                          const uint8_t * key,
-                                                          const uint8_t * iv,
-                                                          bool encrypt)
-{
-  CRYPTO_AES_CFB128(DEFAULT_CRYPTO, out, in, len, key, iv, encrypt);
-}
-
-/***************************************************************************//**
- * @brief
- *   AES Cipher feedback (CFB) cipher mode encryption/decryption, 256 bit key.
- *
- * @deprecated
- *   This function preserves backwards compatibility. Use
- *   @ref CRYPTO_AES_CFB256 instead.
- ******************************************************************************/
-__STATIC_INLINE SL_DEPRECATED_API_SDK_4_1 void AES_CFB256(uint8_t * out,
-                                                          const uint8_t * in,
-                                                          unsigned int len,
-                                                          const uint8_t * key,
-                                                          const uint8_t * iv,
-                                                          bool encrypt)
-{
-  CRYPTO_AES_CFB256(DEFAULT_CRYPTO, out, in, len, key, iv, encrypt);
-}
-
-/***************************************************************************//**
- * @brief
- *   AES Counter (CTR) cipher mode encryption/decryption, 128 bit key.
- *
- * @deprecated
- *   This function preserves backwards compatibility. Use
- *   @ref CRYPTO_AES_CTR128 instead.
- ******************************************************************************/
-__STATIC_INLINE SL_DEPRECATED_API_SDK_4_1 void AES_CTR128(uint8_t * out,
-                                                          const uint8_t * in,
-                                                          unsigned int len,
-                                                          const uint8_t * key,
-                                                          uint8_t * ctr,
-                                                          CRYPTO_AES_CtrFuncPtr_TypeDef ctrFunc)
-{
-  CRYPTO_AES_CTR128(DEFAULT_CRYPTO, out, in, len, key, ctr, ctrFunc);
-}
-
-/***************************************************************************//**
- * @brief
- *   AES Counter (CTR) cipher mode encryption/decryption, 256 bit key.
- *
- * @deprecated
- *   This function preserves backwards compatibility. Use
- *   @ref CRYPTO_AES_CTR256 instead.
- ******************************************************************************/
-__STATIC_INLINE SL_DEPRECATED_API_SDK_4_1 void AES_CTR256(uint8_t * out,
-                                                          const uint8_t * in,
-                                                          unsigned int len,
-                                                          const uint8_t * key,
-                                                          uint8_t * ctr,
-                                                          CRYPTO_AES_CtrFuncPtr_TypeDef ctrFunc)
-{
-  CRYPTO_AES_CTR256(DEFAULT_CRYPTO, out, in, len, key, ctr, ctrFunc);
-}
-
-/***************************************************************************//**
- * @brief
- *   Update last 32 bits of 128 bit counter, by incrementing with 1.
- *
- * @deprecated
- *   This function preserves backwards compatibility. Use
- *   @ref CRYPTO_AES_CTRUpdate32Bit instead.
- ******************************************************************************/
-__STATIC_INLINE SL_DEPRECATED_API_SDK_4_1 void AES_CTRUpdate32Bit(uint8_t * ctr)
-{
-  CRYPTO_AES_CTRUpdate32Bit(ctr);
-}
-
-/***************************************************************************//**
- * @brief
- *   Generate 128 bit AES decryption key from 128 bit encryption key. The
- *   decryption key is used for some cipher modes when decrypting.
- *
- * @deprecated
- *   This function preserves backwards compatibility. Use
- *   @ref CRYPTO_AES_DecryptKey128 instead.
- ******************************************************************************/
-__STATIC_INLINE SL_DEPRECATED_API_SDK_4_1 void AES_DecryptKey128(uint8_t * out,
-                                                                 const uint8_t * in)
-{
-  CRYPTO_AES_DecryptKey128(DEFAULT_CRYPTO, out, in);
-}
-
-/***************************************************************************//**
- * @brief
- *   Generate 256 bit AES decryption key from 256 bit encryption key. The
- *   decryption key is used for some cipher modes when decrypting.
- *
- * @deprecated
- *   This function preserves backwards compatibility. Use
- *   @ref CRYPTO_AES_DecryptKey256 instead.
- ******************************************************************************/
-__STATIC_INLINE SL_DEPRECATED_API_SDK_4_1 void AES_DecryptKey256(uint8_t * out,
-                                                                 const uint8_t * in)
-{
-  CRYPTO_AES_DecryptKey256(DEFAULT_CRYPTO, out, in);
-}
-
-/***************************************************************************//**
- * @brief
- *   AES Electronic Codebook (ECB) cipher mode encryption/decryption,
- *   128 bit key.
- *
- * @deprecated
- *   This function preserves backwards compatibility. Use
- *   @ref CRYPTO_AES_ECB128 instead.
- ******************************************************************************/
-__STATIC_INLINE SL_DEPRECATED_API_SDK_4_1 void AES_ECB128(uint8_t * out,
-                                                          const uint8_t * in,
-                                                          unsigned int len,
-                                                          const uint8_t * key,
-                                                          bool encrypt)
-{
-  CRYPTO_AES_ECB128(DEFAULT_CRYPTO, out, in, len, key, encrypt);
-}
-
-/***************************************************************************//**
- * @brief
- *   AES Electronic Codebook (ECB) cipher mode encryption/decryption,
- *   256 bit key.
- *
- * @deprecated
- *   This function preserves backwards compatibility. Use
- *   @ref CRYPTO_AES_ECB256 instead.
- ******************************************************************************/
-__STATIC_INLINE SL_DEPRECATED_API_SDK_4_1 void AES_ECB256(uint8_t * out,
-                                                          const uint8_t * in,
-                                                          unsigned int len,
-                                                          const uint8_t * key,
-                                                          bool encrypt)
-{
-  CRYPTO_AES_ECB256(DEFAULT_CRYPTO, out, in, len, key, encrypt);
-}
-
-/***************************************************************************//**
- * @brief
- *   AES Output feedback (OFB) cipher mode encryption/decryption, 128 bit key.
- *
- * @deprecated
- *   This function preserves backwards compatibility. Use
- *   @ref CRYPTO_AES_OFB128 instead.
- ******************************************************************************/
-__STATIC_INLINE SL_DEPRECATED_API_SDK_4_1 void AES_OFB128(uint8_t * out,
-                                                          const uint8_t * in,
-                                                          unsigned int len,
-                                                          const uint8_t * key,
-                                                          const uint8_t * iv)
-{
-  CRYPTO_AES_OFB128(DEFAULT_CRYPTO, out, in, len, key, iv);
-}
-
-/***************************************************************************//**
- * @brief
- *   AES Output feedback (OFB) cipher mode encryption/decryption, 256 bit key.
- *
- * @deprecated
- *   This function preserves backwards compatibility. Use
- *   @ref CRYPTO_AES_OFB256 instead.
- ******************************************************************************/
-__STATIC_INLINE SL_DEPRECATED_API_SDK_4_1 void AES_OFB256(uint8_t * out,
-                                                          const uint8_t * in,
-                                                          unsigned int len,
-                                                          const uint8_t * key,
-                                                          const uint8_t * iv)
-{
-  CRYPTO_AES_OFB256(DEFAULT_CRYPTO, out, in, len, key, iv);
-}
-/** @endcond */
 
 #ifdef __cplusplus
 }

@@ -35,6 +35,10 @@
 #include <stdbool.h>
 #include "sl_assert.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if !defined(__STATIC_INLINE)
 #if !defined(__unix__) && defined(__arm__)
 /* Compiler agnostic definitions */
@@ -47,10 +51,6 @@
 #endif
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /***************************************************************************//**
  * @addtogroup common COMMON - Common Utilities
  * @brief General purpose utilities and cross-compiler support
@@ -58,19 +58,24 @@ extern "C" {
  *  This SDK supports the following compilers/IDEs:
  *  @li Simplicity Studio
  *  @li IAR Embedded Workbench
- *  @li Keil µVision IDE
+ *  @li Keil uVision IDE
  *  @li Plain armgcc
  *
  * Certain compiler features such as alignment is implemented differently in the tools.
  * Therefore, macros such as @ref SL_ALIGN are provided to enable compiler independent
  * code.
  *
- * @note RAM code macros are implemented in [RAMFUNC](../../emlib/api).
+ * @note RAM code macros are implemented in [RAMFUNC](/gecko-platform/<docspace-docleaf-version>/emlib-efm32g/).
  * Cross-compiler RAM code support needs extended documentation and it is therefore
  * implemented as a separate module.
  *
  * @{
  ******************************************************************************/
+
+/** @brief Macros to concatenate. */
+#define SL_CONCAT_PASTER_2(first, second)                 first ##  second                      ///< sl concat paster 2.
+#define SL_CONCAT_PASTER_3(first, second, third)          first ##  second ## third             ///< sl concat paster 3.
+#define SL_CONCAT_PASTER_4(first, second, third, fourth)  first ##  second ## third ## fourth   ///< sl concat paster 4.
 
 /** @brief Round n up to closest interval of i. */
 #define SL_CEILING(n, i)   ((((n) + (i) - 1U) / (i)) * (i))
@@ -209,7 +214,7 @@ extern "C" {
   _Pragma("GCC diagnostic pop")
 #else
   #define SL_IGNORE_TYPE_LIMIT_BEGIN
-  #define SL_IGNORE_TYPE_LIMIT_END
+  #define SL_IGNORE_TYPE_LIMIT_END         ///< A MACRO to notify the compiler, limit END.
 #endif
 
 #endif // !defined(__GNUC__)
@@ -248,6 +253,18 @@ extern "C" {
 #define SL_DEPRECATED_API_SDK_4_1
 #else
 #define SL_DEPRECATED_API_SDK_4_1 __attribute__ ((deprecated))
+#endif
+
+#ifdef SL_SUPPRESS_DEPRECATION_WARNINGS_SDK_4_2
+#define SL_DEPRECATED_API_SDK_4_2
+#else
+#define SL_DEPRECATED_API_SDK_4_2 __attribute__ ((deprecated))
+#endif
+
+#ifdef SL_SUPPRESS_DEPRECATION_WARNINGS_SDK_4_4
+#define SL_DEPRECATED_API_SDK_4_4
+#else
+#define SL_DEPRECATED_API_SDK_4_4 __attribute__ ((deprecated))
 #endif
 /** @endcond */
 

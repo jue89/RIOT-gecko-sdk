@@ -33,9 +33,14 @@
 
 #include "em_device.h"
 #include "sl_common.h"
+#if defined(_SILICON_LABS_32B_SERIES) && (_SILICON_LABS_32B_SERIES <= 2)
 #include "em_system.h"
-#include "em_gpio.h"
+#endif
 #include "em_bus.h"
+
+#if defined(_SILICON_LABS_GECKO_INTERNAL_SDID_80)
+#include "em_gpio.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -301,7 +306,7 @@ __STATIC_INLINE void CHIP_Init(void)
   *(volatile uint32_t *)(EMU_BASE + 0x1A4) |= 0x1f << 10;
 #endif
 
-#if defined(_SILICON_LABS_GECKO_INTERNAL_SDID_200)
+#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_1)
   SYSTEM_ChipRevision_TypeDef chipRev;
   SYSTEM_ChipRevisionGet(&chipRev);
 
@@ -366,23 +371,20 @@ __STATIC_INLINE void CHIP_Init(void)
     while (DCDC->SYNCBUSY & DCDC_SYNCBUSY_CTRL) {
       /* Wait for previous synchronization to finish */
     }
+
     DCDC->CTRL_CLR = DCDC_CTRL_MODE;
     while ((DCDC->STATUS & DCDC_STATUS_BYPSW) == 0U) {
       /* Wait for BYPASS switch enable. */
     }
 
-#if (!defined(SL_TRUSTZONE_NONSECURE) && !defined(SL_TRUSTZONE_SECURE))
-    if ((SYSCFG->ROOTLOCKSTATUS & SYSCFG_ROOTLOCKSTATUS_REGLOCK) == 0) {
-      *(volatile uint32_t *)(DCDC_BASE + 0x205CUL) = (0x1UL << 18);
-    }
-#endif // (!defined(SL_TRUSTZONE_NONSECURE) && !defined(SL_TRUSTZONE_SECURE))
-
     if (dcdcIsLock) {
       DCDC->LOCK = ~DCDC_LOCK_LOCKKEY_UNLOCKKEY;
     }
+
     if (dcdcClkIsOff) {
       CMU->CLKEN0_CLR = CMU_CLKEN0_DCDC;
     }
+
     if (syscfgClkIsOff) {
       CMU->CLKEN0_CLR = CMU_CLKEN0_SYSCFG;
     }

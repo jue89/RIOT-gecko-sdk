@@ -19,9 +19,11 @@
 #include "rail.h"
 #include "em_gpio.h"
 
-#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_1)  || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_3)
+#if ((_SILICON_LABS_32B_SERIES_2_CONFIG == 1) \
+  || (_SILICON_LABS_32B_SERIES_2_CONFIG == 3) \
+  || (_SILICON_LABS_32B_SERIES_2_CONFIG == 8))
 #include "sl_rail_util_rf_path_config.h"
-#endif //defined(_SILICON_LABS_32B_SERIES_2_CONFIG_1)  || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_3)
+#endif
 
 // The existence of Antenna GPIO location information on EFR32XG1 series
 // parts enables use of the more flexible RAIL scheme va. legacy GPIO scheme
@@ -127,9 +129,13 @@ void sl_rail_util_ant_div_get_antenna_config(RAIL_AntennaConfig_t *antennaConfig
   antennaConfig->ant0PinEn = true;
   antennaConfig->ant0Port = (uint8_t)SL_RAIL_UTIL_ANT_DIV_ANT0_PORT;
   antennaConfig->ant0Pin  = SL_RAIL_UTIL_ANT_DIV_ANT0_PIN;
-#if defined(SL_RAIL_UTIL_ANT_DIV_ANT0_LOC) // efr32xg1x only
+#if defined(_SILICON_LABS_32B_SERIES_1) // efr32xg1x only
   antennaConfig->ant0Loc  = SL_RAIL_UTIL_ANT_DIV_ANT0_LOC;
-#endif // ant0 loc
+#else
+  // If we are on series 2, use the LOC define as the default path.
+  // This will be overriden if the PATH is specified separatly.
+  antennaConfig->defaultPath = SL_RAIL_UTIL_ANT_DIV_ANT0_LOC;
+#endif // efr32xg1x
 #endif // ant0 port & pin
 
 #if (defined(SL_RAIL_UTIL_ANT_DIV_ANT1_PORT) \
@@ -137,9 +143,9 @@ void sl_rail_util_ant_div_get_antenna_config(RAIL_AntennaConfig_t *antennaConfig
   antennaConfig->ant1PinEn = true;
   antennaConfig->ant1Port = (uint8_t)SL_RAIL_UTIL_ANT_DIV_ANT1_PORT;
   antennaConfig->ant1Pin  = SL_RAIL_UTIL_ANT_DIV_ANT1_PIN;
-#if defined(SL_RAIL_UTIL_ANT_DIV_ANT1_LOC) // efr32xg1x only
+#if defined(_SILICON_LABS_32B_SERIES_1) // efr32xg1x only
   antennaConfig->ant1Loc  = SL_RAIL_UTIL_ANT_DIV_ANT1_LOC;
-#endif // ant1 loc
+#endif // efr32xg1x
 #endif // ant1 port & pin
 
 #if defined(SL_RAIL_UTIL_RF_PATH_INT_RF_PATH_MODE) // efr32xg2x chip-specific

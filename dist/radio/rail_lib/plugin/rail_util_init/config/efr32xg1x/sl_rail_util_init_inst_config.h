@@ -80,6 +80,9 @@
 // <SL_RAIL_UTIL_PROTOCOL_ZWAVE_US_LR1=> Z-Wave United States, Long Range 1
 // <SL_RAIL_UTIL_PROTOCOL_ZWAVE_US_LR2=> Z-Wave United States, Long Range 2
 // <SL_RAIL_UTIL_PROTOCOL_ZWAVE_US_LR_END_DEVICE=> Z-Wave United States, Long Range End Device
+// <SL_RAIL_UTIL_PROTOCOL_ZWAVE_EU_LR1=> Z-Wave European Union, Long Range 1
+// <SL_RAIL_UTIL_PROTOCOL_ZWAVE_EU_LR2=> Z-Wave European Union, Long Range 2
+// <SL_RAIL_UTIL_PROTOCOL_ZWAVE_EU_LR_END_DEVICE=> Z-Wave European Union, Long Range End Device
 // <i> Default: SL_RAIL_UTIL_PROTOCOL_BLE_1MBPS
 #define SL_RAIL_UTIL_INIT_PROTOCOL_INSTANCE_DEFAULT  SL_RAIL_UTIL_PROTOCOL_BLE_1MBPS
 // <o SL_RAIL_UTIL_INIT_PROTOCOL_PROPRIETARY_INSTANCE_INDEX> Proprietary Radio Config Index (if Proprietary radio config selected, use index X of channelConfigs[X])
@@ -321,6 +324,22 @@
 // <q SL_RAIL_UTIL_INIT_EVENT_DETECT_RSSI_THRESHOLD_INSTANCE_ENABLE> RSSI detect threshold
 // <i> Default: 0
 #define SL_RAIL_UTIL_INIT_EVENT_DETECT_RSSI_THRESHOLD_INSTANCE_ENABLE 0
+// </h>
+// <h> Thermistor Events
+// <q SL_RAIL_UTIL_INIT_EVENT_THERMISTOR_DONE_INSTANCE_ENABLE> End of thermistor measurement
+// <i> Default: 0
+#define SL_RAIL_UTIL_INIT_EVENT_THERMISTOR_DONE_INSTANCE_ENABLE 0
+// </h>
+// <h> Temperature Events
+// <q SL_RAIL_UTIL_INIT_EVENT_TX_BLOCKED_TOO_HOT_INSTANCE_ENABLE> Transmit blocked because of temperature limitation
+// <i> Default: 0
+#define SL_RAIL_UTIL_INIT_EVENT_TX_BLOCKED_TOO_HOT_INSTANCE_ENABLE 0
+// <q SL_RAIL_UTIL_INIT_EVENT_TEMPERATURE_TOO_HOT_INSTANCE_ENABLE> Temperature is too hot for Tx operation
+// <i> Default: 0
+#define SL_RAIL_UTIL_INIT_EVENT_TEMPERATURE_TOO_HOT_INSTANCE_ENABLE 0
+// <q SL_RAIL_UTIL_INIT_EVENT_TEMPERATURE_COOL_DOWN_INSTANCE_ENABLE> Temperature has cooled enough for Tx operation
+// <i> Default: 0
+#define SL_RAIL_UTIL_INIT_EVENT_TEMPERATURE_COOL_DOWN_INSTANCE_ENABLE 0
 // </h>
 // </e>
 

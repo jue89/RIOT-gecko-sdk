@@ -37,6 +37,9 @@
 
 // <h> Bluetooth LE Settings
 // <h> BLE: Transition Times
+// <q SL_RAIL_UTIL_PROTOCOL_BLE_ENABLE> Enable/Disable BLE
+// <i> Default: 1
+#define SL_RAIL_UTIL_PROTOCOL_BLE_ENABLE 1
 // <o SL_RAIL_UTIL_PROTOCOL_BLE_TIMING_IDLE_TO_RX_US> Transition time (microseconds) from idle to RX
 // <0-65535:1>
 // <i> Default: 100
@@ -77,6 +80,9 @@
 
 // <h> IEEE 802.15.4, 2.4 GHz Settings
 // <h> 2.4 GHz: Node Configuration
+// <q SL_RAIL_UTIL_PROTOCOL_IEEE802154_2P4GHZ_ENABLE> Enable/Disable IEEE 802.15.4 2.4 GHz Protocol
+// <i> Default: 1
+#define SL_RAIL_UTIL_PROTOCOL_IEEE802154_2P4GHZ_ENABLE 1
 // <q SL_RAIL_UTIL_PROTOCOL_IEEE802154_2P4GHZ_PAN_COORDINATOR_ENABLE> PAN Coordinator
 // <i> Default: 0
 #define SL_RAIL_UTIL_PROTOCOL_IEEE802154_2P4GHZ_PAN_COORDINATOR_ENABLE 0
@@ -165,6 +171,9 @@
 
 // <h> IEEE 802.15.4, GB868 Settings
 // <h> GB868: Node Configuration
+// <q SL_RAIL_UTIL_PROTOCOL_IEEE802154_GB868_ENABLE> Enable/Disable IEEE 802.15.4 868 Hz Protocol
+// <i> Default: 1
+#define SL_RAIL_UTIL_PROTOCOL_IEEE802154_GB868_ENABLE 1
 // <q SL_RAIL_UTIL_PROTOCOL_IEEE802154_GB868_PAN_COORDINATOR_ENABLE> PAN Coordinator
 // <i> Default: 0
 #define SL_RAIL_UTIL_PROTOCOL_IEEE802154_GB868_PAN_COORDINATOR_ENABLE 0
@@ -253,6 +262,9 @@
 
 // <h> Z-Wave Settings
 // <h> Z-Wave: Configuration Options
+// <q SL_RAIL_UTIL_PROTOCOL_ZWAVE_ENABLE> Enable/Disable Z-Wave
+// <i> Default: 1
+#define SL_RAIL_UTIL_PROTOCOL_ZWAVE_ENABLE 1
 // <q SL_RAIL_UTIL_PROTOCOL_ZWAVE_PROMISCUOUS_MODE_ENABLE> Enable Promiscuous Mode
 // <i> Default: 1
 #define SL_RAIL_UTIL_PROTOCOL_ZWAVE_PROMISCUOUS_MODE_ENABLE 1
@@ -262,6 +274,9 @@
 // <q SL_RAIL_UTIL_PROTOCOL_ZWAVE_NODE_ID_FILTERING_ENABLE> Filter Packets Based on Node ID
 // <i> Default: 0
 #define SL_RAIL_UTIL_PROTOCOL_ZWAVE_NODE_ID_FILTERING_ENABLE 0
+// <q SL_RAIL_UTIL_PROTOCOL_ZWAVE_PROMISCUOUS_BEAM_MODE_ENABLE> Enable Promiscuous Beam Mode
+// <i> Default: 0
+#define SL_RAIL_UTIL_PROTOCOL_ZWAVE_PROMISCUOUS_BEAM_MODE_ENABLE 0
 // </h>
 
 // <h> Z-Wave: Transition Times

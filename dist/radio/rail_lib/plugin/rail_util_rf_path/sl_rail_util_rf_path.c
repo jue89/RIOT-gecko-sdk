@@ -30,9 +30,15 @@
 
 #include "rail.h"
 #include "sl_rail_util_rf_path.h"
-#if defined(_SILICON_LABS_32B_SERIES_2_CONFIG_1)  || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_3)
+#ifdef RAIL_INTERNAL_BUILD
+#include "sl_rail_util_rf_path_internal.h"
+#endif
+
+#if ((_SILICON_LABS_32B_SERIES_2_CONFIG == 1) \
+  || (_SILICON_LABS_32B_SERIES_2_CONFIG == 3) \
+  || (_SILICON_LABS_32B_SERIES_2_CONFIG == 8))
 #include "sl_rail_util_rf_path_config.h"
-#endif //defined(_SILICON_LABS_32B_SERIES_2_CONFIG_1)  || defined(_SILICON_LABS_32B_SERIES_2_CONFIG_3)
+#endif
 
 void sl_rail_util_rf_path_init(void)
 {

@@ -61,6 +61,13 @@ RAIL_ENUM(RAIL_PaBand_t) {
   RAIL_PA_BAND_COUNT,
 };
 
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+// Self-referencing defines minimize compiler complaints when using RAIL_ENUM
+#define RAIL_PA_BAND_2P4GIG ((RAIL_PaBand_t)RAIL_PA_BAND_2P4GIG)
+#define RAIL_PA_BAND_SUBGIG ((RAIL_PaBand_t)RAIL_PA_BAND_SUBGIG)
+#define RAIL_PA_BAND_COUNT ((RAIL_PaBand_t)RAIL_PA_BAND_COUNT)
+#endif
+
 /**
  * @struct RAIL_PaAutoModeConfigEntry_t
  * @brief Struct to ease specification of appropriate ranges
@@ -98,6 +105,10 @@ RAIL_Status_t RAIL_ConfigPaAutoEntry(RAIL_Handle_t railHandle,
  * @}
  * end of RAIL_API
  */
+
+#ifdef RAIL_INTERNAL_BUILD
+#include "pa_auto_mode_internal.h"
+#endif
 
 #ifdef __cplusplus
 }

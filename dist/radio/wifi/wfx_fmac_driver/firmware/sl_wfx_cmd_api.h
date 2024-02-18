@@ -128,7 +128,8 @@ typedef enum sl_wfx_requests_ids_e {
   SL_WFX_GET_PMK_REQ_ID                          = 0x62,   ///< \b GET_PMK request ID uses body SL_WFX_GET_PMK_REQ_BODY and returns SL_WFX_GET_PMK_CNF_BODY
   SL_WFX_GET_AP_CLIENT_SIGNAL_STRENGTH_REQ_ID    = 0x63,   ///< \b GET_AP_CLIENT_SIGNAL_STRENGTH request ID uses body SL_WFX_GET_AP_CLIENT_SIGNAL_STRENGTH_BODY and returns SL_WFX_GET_AP_CLIENT_SIGNAL_STRENGTH_CNF_BODY
   SL_WFX_EXT_AUTH_REQ_ID                         = 0x64,   ///< \b EXT_AUTH request ID uses body SL_WFX_EXT_AUTH_BODY and returns SL_WFX_EXT_AUTH_CNF_BODY
-  SL_WFX_AP_SCAN_REQUEST_FILTER_REQ_ID           = 0x65    ///< \b AP_SCAN_REQUEST request ID uses body SL_WFX_AP_SCAN_REQUEST_BODY and returns SL_WFX_AP_SCAN_REQUEST_CNF_BODY
+  SL_WFX_AP_SCAN_REQUEST_FILTER_REQ_ID           = 0x65,   ///< \b AP_SCAN_REQUEST request ID uses body SL_WFX_AP_SCAN_REQUEST_BODY and returns SL_WFX_AP_SCAN_REQUEST_CNF_BODY
+  SL_WFX_GET_STATISTICS_REQ_ID                   = 0x66    ///< \b GET_STATISTICS request ID uses body SL_WFX_GET_STATISTICS_REQ_BODY and returns SL_WFX_GET_STATISTICS_CNF_BODY
 } sl_wfx_requests_ids_t;
 
 /**
@@ -165,7 +166,8 @@ typedef enum sl_wfx_confirmations_ids_e {
   SL_WFX_GET_PMK_CNF_ID                          = 0x62,   ///< \b GET_PMK confirmation Id. Returns body SL_WFX_GET_PMK_CNF_BODY
   SL_WFX_GET_AP_CLIENT_SIGNAL_STRENGTH_CNF_ID    = 0x63,   ///< \b GET_AP_CLIENT_SIGNAL_STRENGTH confirmation Id. Returns body SL_WFX_GET_AP_CLIENT_SIGNAL_STRENGTH_CNF_BODY
   SL_WFX_EXT_AUTH_CNF_ID                         = 0x64,   ///< \b EXT_AUTH confirmation Id. Returns body SL_WFX_EXT_AUTH_BODY
-  SL_WFX_AP_SCAN_REQUEST_FILTER_CNF_ID           = 0x65    ///< \b AP_SCAN_REQUEST confirmation Id. Returns body SL_WFX_AP_SCAN_REQUEST_CNF_BODY
+  SL_WFX_AP_SCAN_REQUEST_FILTER_CNF_ID           = 0x65,   ///< \b AP_SCAN_REQUEST confirmation Id. Returns body SL_WFX_AP_SCAN_REQUEST_CNF_BODY
+  SL_WFX_GET_STATISTICS_CNF_ID                   = 0x66    ///< \b GET_STATISTICS confirmation Id. Returns body SL_WFX_GET_STATISTICS_CNF_BODY
 } sl_wfx_confirmations_ids_t;
 
 /**
@@ -228,6 +230,10 @@ typedef union __attribute__((__packed__)) wfm_message_ids_u {
 #define SL_WFX_IPV6_ADDR_SIZE                    16
 /** Maximum size of IE data filter */
 #define SL_WFX_IE_DATA_FILTER_SIZE               16
+/** Length of Master Session Key (MSK) */
+#define SL_WFX_MSK_SIZE                          32
+/** Length of Master Session Key Identifier (MSKID) */
+#define SL_WFX_MSKID_SIZE                        16
 
 /**
  * @brief Client Isolation toggling.
@@ -336,7 +342,8 @@ typedef enum sl_wfx_security_mode_e {
   WFM_SECURITY_MODE_WEP                          = 0x1,    ///< Use WEP
   WFM_SECURITY_MODE_WPA2_WPA1_PSK                = 0x2,    ///< Use WPA1 or WPA2
   WFM_SECURITY_MODE_WPA2_PSK                     = 0x4,    ///< Use only WPA2
-  WFM_SECURITY_MODE_WPA3_SAE                     = 0x6     ///< Use WPA3 (STA mode only)
+  WFM_SECURITY_MODE_WPA3_SAE                     = 0x6,    ///< Use WPA3 (STA mode only)
+  WFM_SECURITY_MODE_WPA3_SAE_WPA2_PSK            = 0x7     ///< Use WPA3 Transition Mode (STA mode only)
 } sl_wfx_security_mode_t;
 
 /**
@@ -346,7 +353,8 @@ typedef enum sl_wfx_ext_auth_data_type_e {
   WFM_EXT_AUTH_DATA_TYPE_SAE_START               = 0x0,    ///<
   WFM_EXT_AUTH_DATA_TYPE_SAE_COMMIT              = 0x1,    ///<
   WFM_EXT_AUTH_DATA_TYPE_SAE_CONFIRM             = 0x2,    ///<
-  WFM_EXT_AUTH_DATA_TYPE_MSK                     = 0x3     ///<
+  WFM_EXT_AUTH_DATA_TYPE_MSK                     = 0x3,    ///<
+  WFM_EXT_AUTH_DATA_TYPE_TRANSITION_DISABLE      = 0x4     ///<
 } sl_wfx_ext_auth_data_type_t;
 
 /**
@@ -371,6 +379,13 @@ typedef enum sl_wfx_fmac_status_e {
   WFM_STATUS_TX_LIFETIME_EXCEEDED                = 0x14,   ///< The request failed because the MSDU life time was exceeded.
   WFM_STATUS_REQUEUE                             = 0x15    ///< The request failed because TX is suspended (temperature too high)
 } sl_wfx_fmac_status_t;
+
+typedef enum sl_wfx_ps_mode_error_e {
+  WFM_PS_MODE_ERROR_PSPOLL_TIMEOUT               = 0x0,       ///< AP has not sent any buffered unicast data in response to a PS-Poll.
+  WFM_PS_MODE_ERROR_UAPSD_TIMEOUT                = 0x1,       ///< AP has not sent any buffered unicast data in response to a U-APSD trigger frame.
+  WFM_PS_MODE_ERROR_BEACON_TIMEOUT               = 0x2,       ///< AP has indicated buffered unicast data but has not sent any in 8 consecutive beacons.
+  WFM_PS_MODE_ERROR_BEACON_TIMING                = 0x3        ///< AP beacon timings are unstable, the device has adjusted its beacon window to compensate.
+} sl_wfx_ps_mode_error_t;
 
 /**
  * @}
@@ -405,7 +420,7 @@ typedef struct __attribute__((__packed__)) sl_wfx_security_mode_bitmask_s {
   uint8_t  wpa2 : 1;                                       ///< Network supports WPA2. If both WPA bits are set the network supports mixed mode.
   uint8_t  wpa3 : 1;                                       ///< Network supports WPA3. If multiple WPA bits are set the network supports mixed mode.
   uint8_t  pmf : 1;                                        ///< Networks requires use of Protected Management Frames
-  uint8_t  unused : 1;                                     ///< Reserved, set to zero
+  uint8_t  h2e : 1;                                        ///< Network supports WPA3 hash-to-element technique.
   uint8_t  psk : 1;                                        ///< Network supports Personal authentication
   uint8_t  eap : 1;                                        ///< Network supports Enterprise authentication
 } sl_wfx_security_mode_bitmask_t;
@@ -447,6 +462,55 @@ typedef struct __attribute__((__packed__)) sl_wfx_ns_ip_addr_s {
   /** NS IP address. */
   uint8_t  ipv6_addr[SL_WFX_IPV6_ADDR_SIZE];
 } sl_wfx_ns_ip_addr_t;
+
+/**
+ * @brief Message structure used to indicate start of SAE authentication process.
+ */
+typedef struct __attribute__((__packed__)) sl_wfx_ext_auth_sae_start_s {
+  /* BSSID of the AP */
+  uint8_t bssid[SL_WFX_BSSID_SIZE];
+  /** Security Capabilities of the AP */
+  sl_wfx_security_mode_bitmask_t security_mode;
+} sl_wfx_ext_auth_sae_start_t;
+
+/**
+ * @brief Message structure for device/peer SAE commit/confirm.
+ */
+typedef struct __attribute__((__packed__)) sl_wfx_ext_auth_sae_message_s {
+  /** 802.11 Status code */
+  uint16_t status_code;
+  /** SAE data after Status code field */
+  uint8_t sae_data[];
+} sl_wfx_ext_auth_sae_message_t;
+
+/**
+ * @brief Message structure for Master Session Key (MSK).
+ */
+typedef struct __attribute__((__packed__)) sl_wfx_ext_auth_msk_s {
+  /** Master Session Key */
+  uint8_t msk[SL_WFX_MSK_SIZE];
+  /** Master Session Key Identifier */
+  uint8_t mskid[SL_WFX_MSKID_SIZE];
+} sl_wfx_ext_auth_msk_t;
+
+/**
+ * @brief Bitmask of disabled security modes in SAE transition mode.
+ */
+typedef struct __attribute__((__packed__)) sl_wfx_ext_auth_transition_disable_bitmask_s {
+  uint8_t wpa3personal : 1;
+  uint8_t saepk : 1;
+  uint8_t wpa3enterprise : 1;
+  uint8_t enhancedopen : 1;
+  uint8_t reserved : 4;
+} sl_wfx_ext_auth_transition_disable_bitmask_t;
+
+/**
+ * @brief Message structure for SAE transition disable indication.
+ */
+typedef struct __attribute__((__packed__)) sl_wfx_ext_auth_transition_disable_s {
+  /** Transition Disable Bitmap */
+  sl_wfx_ext_auth_transition_disable_bitmask_t mask;
+} sl_wfx_ext_auth_transition_disable_t;
 
 /**
  * @}
@@ -1098,10 +1162,21 @@ typedef struct __attribute__((__packed__)) sl_wfx_set_pm_mode_req_body_s {
   /**
    * @brief Number of beacons/DTIMs to skip while sleeping.
    * @details <B>0</B>: wake-up on every beacon/DTIM.
-   *          <BR><B>1 - 600</B>: the number of beacon/DTIMs to skip.
+   *          <BR><B>1 - 254</B>: the number of beacon/DTIMs to skip.
    *          <BR>See @ref WFM_CONCEPT_PM for further details.
    */
   uint16_t listen_interval;
+  /**
+   * @brief Timeout after which the device switches to power save after having been active in Fast Power Save mode.
+   * @details <B>0</B>: use the default timeout (20 ms).
+   *          <BR><B>1 - 255</B>: the timeout in units of 500 us.
+   */
+  uint8_t fast_psm_idle_period;
+  /**
+   * @brief Reserved
+   * 
+   */
+  uint8_t reserved[3];
 } sl_wfx_set_pm_mode_req_body_t;
 
 /**
@@ -1147,6 +1222,29 @@ typedef struct __attribute__((__packed__)) sl_wfx_set_pm_mode_cnf_s {
 } sl_wfx_set_pm_mode_cnf_t;
 
 /**
+ * @brief Indication message body for sl_wfx_ps_mode_error_ind_t.
+ */
+typedef struct __attribute__((__packed__)) sl_wfx_ps_mode_error_ind_body_s {
+  /**
+     * @brief Reason for PS mode error indicaton.
+     * @details <B>WFM_PS_MODE_ERROR_PSPOLL_TIMEOUT</B>: AP has not sent any buffered unicast data in response to a PS-Poll,
+     *                                                   the device has switched to Fast Power Save mode to compensate.
+     *          <BR><B>WFM_PS_MODE_ERROR_UAPSD_TIMEOUT</B>: AP has not sent any buffered unicast data in response to a U-APSD trigger frame,
+     *                                                      the device has switched to Fast Power Save mode to compensate.
+     *          <BR><B>WFM_PS_MODE_ERROR_BEACON_TIMEOUT</B>: AP has indicated buffered unicast data but has not sent any in 8 consecutive beacons,
+     *                                                       the device has switched to Fast Power Save mode to compensate.
+     *          <BR><B>WFM_PS_MODE_ERROR_BEACON_TIMING</B>: AP beacon timings are unstable. The device is trying to compensate,
+     *                                                      which may affect power consumption. Power management mode and
+     *                                                      power save polling strategy remain unchanged.
+     *          <BR>See sl_wfx_ps_mode_error_t for enumeration values.
+     */
+    uint32_t reason;
+} sl_wfx_ps_mode_error_ind_body_t;
+
+/**
+ * @brief 
+ * 
+ *
  * @brief Indication message used to signal that the device has switched to Fast Power Save.
  * @details This indication occurs when the devices switches to Fast PS as an attempt to mitigate
  *          poor performance with U-APSD. Listen interval falls back to 0 (listen to every beacon/DTIM).
@@ -1154,7 +1252,12 @@ typedef struct __attribute__((__packed__)) sl_wfx_set_pm_mode_cnf_s {
  * @ingroup WFM_GROUP_MESSAGES
  * @ingroup WFM_GROUP_MODE_STA
  */
-typedef sl_wfx_header_t sl_wfx_ps_mode_error_ind_t;
+typedef struct __attribute__((__packed__)) sl_wfx_ps_mode_error_ind_s {
+    /** Common message header. */
+    sl_wfx_header_t header;
+    /** Indication message body. */
+    sl_wfx_ps_mode_error_ind_body_t body;
+} sl_wfx_ps_mode_error_ind_t;
 
 /**
  * @brief Request message body for sl_wfx_start_ap_req_t.
@@ -3050,6 +3153,11 @@ typedef struct __attribute__((__packed__)) sl_wfx_ext_auth_ind_body_s {
 } sl_wfx_ext_auth_ind_body_t;
 
 /**
+ * @brief Indication message triggered during a WPA3 authentication process.
+ * @details The device will send this indication when an authentication
+ *          packet is received and needs to be handled by the host.
+ * @ingroup WFM_GROUP_MESSAGES
+ * @ingroup WFM_GROUP_MODE_STA
  */
 typedef struct __attribute__((__packed__))  sl_wfx_ext_auth_ind_s {
   /** Common message header. */
@@ -3169,6 +3277,95 @@ typedef struct __attribute__((__packed__)) sl_wfx_ap_scan_filter_ind_s {
   /** Indication message body. */
   sl_wfx_ap_scan_filter_ind_body_t body;
 } sl_wfx_ap_scan_filter_ind_t;
+
+/**
+ * @brief Request message for retrieving interface statistics.
+ * @details The host can use this request to retrieve per-interface statistics.
+ *          Values returned are cumulative, calculated from the start of the
+ *          connection and in case of roaming, calculated over multiple APs.
+ *          | Interface mode | Request allowed |
+ *          |:---------------|:----------------|
+ *          | idle           | No              |
+ *          | station        | Yes             |
+ *          | AP             | No              |
+ * @ingroup WFM_GROUP_MESSAGES
+ * @ingroup WFM_GROUP_MODE_STA
+ */
+typedef sl_wfx_header_t sl_wfx_get_statistics_req_t;
+
+/**
+ * @brief Confirmation message body for SL_WFX_GET_STATISTICS_CNF_ID.
+ */
+typedef struct __attribute__((__packed__)) sl_wfx_get_statistics_cnf_body_s {
+    /** 
+     * @brief Status of the get request.
+     * @details <B>WFM_STATUS_SUCCESS</B>: the get request was completed.
+     *          <BR><B>any other value</B>: the get request failed.
+     *          <BR>See ::WFM_STATUS for enumeration values.
+     */
+    uint32_t status;
+    /**
+     * The amount of beacons received.
+     */
+    uint32_t beacon_rx_count;
+    /**
+     * The amount of beacons missed. This value only includes beacons the
+     * device was expecting to receive but did not. Modifying device sleep
+     * interval with WFM_HI_SET_PM_MODE_REQ command may cause the device
+     * to skip beacons, which are not included in this value.
+     */
+    uint32_t beacon_rx_missed_count;
+    /**
+     * AP is supposed to transmit a beacon on Target Beacon Transmission Time
+     * (TBTT) but the actual transmission time may vary depending on channel
+     * utilization and due to AP-specific functionality. This value shows
+     * the time difference in microseconds between the expected time and the
+     * actual receive time of the previous beacon.
+     */
+    int32_t beacon_tbtt_diff;
+    /**
+     * The amount of unicast data packets received and forwarded to the
+     * host.
+     */
+    uint32_t unicast_rx_count;
+    /**
+     * The amount of successful unicast data packet transmission requests
+     * made by the host.
+     */
+    uint32_t unicast_tx_success_count;
+    /**
+     * The amount of failed unicast data packet transmission requests
+     * made by the host.
+     */
+    uint32_t unicast_tx_failure_count;
+    /**
+     * The amount of multicast/broadcast data packets received and forwarded
+     * to the host.
+     */
+    uint32_t multicast_rx_count;
+    /**
+     * The amount of successful multicast/broadcast data packet transmission
+     * requests made by the host.
+     */
+    uint32_t multicast_tx_success_count;
+    /**
+     * The amount of failed multicast/broadcast data packet transmission
+     * requests made by the host.
+     */
+    uint32_t multicast_tx_failure_count;
+} sl_wfx_get_statistics_cnf_body_t;
+
+/**
+ * @brief Confirmation message for sl_wfx_get_statistics_req_t.
+ * @ingroup WFM_GROUP_MESSAGES
+ * @ingroup WFM_GROUP_MODE_STA
+ */
+typedef struct __attribute__((__packed__)) sl_wfx_get_statistics_cnf_s {
+    /** Common message header. */
+    sl_wfx_header_t header;
+    /** Confirmation message body. */
+    sl_wfx_get_statistics_cnf_body_t body;
+} sl_wfx_get_statistics_cnf_t;
 
 /**************************************************/
 

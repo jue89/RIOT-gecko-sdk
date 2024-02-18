@@ -29,7 +29,17 @@
  ******************************************************************************/
 #include "sl_cli.h"
 #include "sl_zigbee_debug_print.h"
+#ifdef EZSP_HOST
+#include "app/util/ezsp/ezsp-protocol.h"
+#include "app/util/ezsp/ezsp.h"
+#ifdef RAIL_SIM_EZSP
+#include "af_main.h"
+#else //!RAIL_SIM_EZSP
+#include "app/framework/include/af-types.h"
+#endif //RAIL_SIM_EZSP
+#else //!EZSP_HOST
 #include "sl_rail_util_ieee802154_phy_select.h"
+#endif //EZSP_HOST
 
 #define PHY_COUNT ((sizeof(phyNames) / sizeof(phyNames[0])) - 1)
 static const char * const phyNames[] = {
@@ -48,9 +58,16 @@ static const char * const phyNames[] = {
 // Get Active Radio PHY
 // Console Command : "plugin phy-select get-active-phy"
 // Console Response: "Active Radio PHY:<Active Radio PHY>"
-void emberAfPluginGetActiveRadioPhy(void)
+void emberAfPluginGetActiveRadioPhy(sl_cli_command_arg_t *arguments)
 {
-  uint8_t activePhy = (uint8_t)sl_rail_util_ieee802154_get_active_radio_config();
+  (void)arguments;
+  uint8_t activePhy;
+#ifdef EZSP_HOST
+  uint8_t valueLength = sizeof(activePhy);
+  ezspGetValue(EZSP_VALUE_ACTIVE_RADIO_CONFIG, &valueLength, &activePhy);
+#else //!EZSP_HOST
+  activePhy = (uint8_t)sl_rail_util_ieee802154_get_active_radio_config();
+#endif //EZSP_HOST
 
   if (activePhy >= PHY_COUNT) {
     activePhy = PHY_COUNT;

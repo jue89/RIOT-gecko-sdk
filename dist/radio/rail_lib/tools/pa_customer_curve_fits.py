@@ -269,10 +269,10 @@ def main():
                       required=False,
                       help="The step size (in dBm rounded to 1 decimal place) to segment the power range. ")
   parser.add_argument('-m', '--maxPower',
-                      type=int,
+                      type=float,
                       default=API_MAX_POWER_DEFAULT,
                       required=False,
-                      help="The maximum power(in integer dBm) the curve should fit.")
+                      help="The maximum power(in dBm rounded to 1 decimal place) the curve should fit.")
   parser.add_argument('-n', '--numSegment',
                       type=int,
                       default=NUM_SEGMENTS_DEFAULT,
@@ -305,7 +305,7 @@ def main():
       f.write(output)
   if (minPowerLevel == 255) or (maxPowerLevel == 255):
     print("WARNING :: Curve doesn't have correct min/max powerlevels.")
-  print("\nMax Powerlevel: %d, Min Powerlevel: %d" %(minPowerLevel, maxPowerLevel))
+  print("\nMin Powerlevel: %d, Max Powerlevel: %d" %(minPowerLevel, maxPowerLevel))
   # Show the plot of the curve fit if requested
   if enablePlotting:
     plt.show()
